@@ -4,7 +4,7 @@
     <!-- Metadatos -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Oficina Virtual Completa con Contenedores Editables</title>
+    <title>Oficina Virtual con Enlaces Estilizados</title>
     <!-- Importar Font Awesome para los íconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Importar la fuente Montserrat desde Google Fonts -->
@@ -284,6 +284,31 @@
         .links {
             margin-top: 10px;
         }
+        /* Estilos para los enlaces dentro de las tarjetas */
+        .link-section {
+            display: flex;
+            align-items: center;
+            background-color: #33334d;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .link-section:hover {
+            background-color: #3b3b59;
+        }
+        .link-section img {
+            width: 24px;
+            height: 24px;
+            margin-right: 10px;
+            border-radius: 5px;
+        }
+        .link-section span {
+            color: #fff; /* Texto de color blanco */
+            font-size: 14px;
+            font-weight: 500;
+        }
         .editable {
             outline: none;
             cursor: text;
@@ -332,24 +357,6 @@
         }
         .menu-opciones button:hover {
             color: #00bfa5;
-        }
-        .link-section {
-            display: flex;
-            align-items: center;
-            margin-top: 5px;
-        }
-        .link-section img {
-            width: 16px;
-            height: 16px;
-            margin-right: 5px;
-        }
-        .link-section a {
-            color: #00bfa5;
-            text-decoration: none;
-            cursor: pointer;
-        }
-        .link-section a:hover {
-            text-decoration: underline;
         }
         .image-link-thumbnail {
             width: 50px;
@@ -1145,8 +1152,9 @@
                         linkSection.className = 'link-section';
                         linkSection.innerHTML = `
                             <img src="${faviconUrl}" alt="Favicon">
-                            <a href="#" class="editable-link video-link" data-video-type="direct" data-video-url="${linkUrl}">${linkName}</a>
+                            <span class="editable-link video-link" data-video-type="direct" data-video-url="${linkUrl}">${linkName}</span>
                         `;
+                        linkSection.onclick = () => openVideoModal('direct', linkUrl);
                     } else if (videoType === 'youtube') {
                         let videoId = '';
                         if (hostname === 'youtu.be') {
@@ -1159,16 +1167,18 @@
                             linkSection.className = 'link-section';
                             linkSection.innerHTML = `
                                 <img src="${faviconUrl}" alt="Favicon">
-                                <a href="#" class="editable-link video-link" data-video-type="youtube" data-video-id="${videoId}">${linkName}</a>
+                                <span class="editable-link video-link" data-video-type="youtube" data-video-id="${videoId}">${linkName}</span>
                             `;
+                            linkSection.onclick = () => openVideoModal('youtube', videoId);
                         } else {
                             // Enlace normal si no se puede extraer el ID
                             linkSection = document.createElement('div');
                             linkSection.className = 'link-section';
                             linkSection.innerHTML = `
                                 <img src="${faviconUrl}" alt="Favicon">
-                                <a href="${linkUrl}" target="_blank" class="editable-link">${linkName}</a>
+                                <span class="editable-link">${linkName}</span>
                             `;
+                            linkSection.onclick = () => window.open(linkUrl, '_blank');
                         }
                     }
                 } else if (isImage) {
@@ -1176,25 +1186,28 @@
                     linkSection = document.createElement('div');
                     linkSection.className = 'link-section';
                     linkSection.innerHTML = `
-                        <img src="${linkUrl}" alt="${linkName}" class="image-link-thumbnail" data-image-url="${linkUrl}">
-                        <a href="#" class="editable-link image-link" data-image-url="${linkUrl}">${linkName}</a>
+                        <img src="${linkUrl}" alt="${linkName}">
+                        <span class="editable-link image-link" data-image-url="${linkUrl}">${linkName}</span>
                     `;
+                    linkSection.onclick = () => openImageModal(linkUrl);
                 } else if (isDocument) {
                     // Para enlaces de documentos
                     linkSection = document.createElement('div');
                     linkSection.className = 'link-section';
                     linkSection.innerHTML = `
                         <img src="${faviconUrl}" alt="Favicon">
-                        <a href="#" class="editable-link document-link" data-document-url="${linkUrl}" data-google-drive="${isGoogleDrive}">${linkName}</a>
+                        <span class="editable-link document-link" data-document-url="${linkUrl}" data-google-drive="${isGoogleDrive}">${linkName}</span>
                     `;
+                    linkSection.onclick = () => openDocumentModal(linkUrl, isGoogleDrive);
                 } else {
                     // Enlaces normales
                     linkSection = document.createElement('div');
                     linkSection.className = 'link-section';
                     linkSection.innerHTML = `
                         <img src="${faviconUrl}" alt="Favicon">
-                        <a href="${linkUrl}" target="_blank" class="editable-link">${linkName}</a>
+                        <span class="editable-link">${linkName}</span>
                     `;
+                    linkSection.onclick = () => window.open(linkUrl, '_blank');
                 }
 
                 const linksContainer = button.closest('.card').querySelector('.links');
@@ -1422,43 +1435,9 @@
 
         // Función para manejar clics en enlaces
         function handleLinkClick(event) {
-            const videoLink = event.target.closest('a.video-link');
-            if (videoLink) {
-                console.log('Enlace de video detectado:', videoLink); // Para depuración
-                event.preventDefault();
-                const videoType = videoLink.getAttribute('data-video-type');
-                if (videoType === 'direct') {
-                    const videoUrl = videoLink.getAttribute('data-video-url');
-                    openVideoModal('direct', videoUrl);
-                } else if (videoType === 'youtube') {
-                    const videoId = videoLink.getAttribute('data-video-id');
-                    openVideoModal('youtube', videoId);
-                }
-            }
-
-            const imageLink = event.target.closest('a.image-link');
-            if (imageLink) {
-                console.log('Enlace de imagen detectado:', imageLink); // Para depuración
-                event.preventDefault();
-                const imageUrl = imageLink.getAttribute('data-image-url');
-                openImageModal(imageUrl);
-            }
-
-            const imageThumbnail = event.target.closest('img.image-link-thumbnail');
-            if (imageThumbnail) {
-                console.log('Thumbnail de imagen detectado:', imageThumbnail); // Para depuración
-                event.preventDefault();
-                const imageUrl = imageThumbnail.getAttribute('data-image-url');
-                openImageModal(imageUrl);
-            }
-
-            const documentLink = event.target.closest('a.document-link');
-            if (documentLink) {
-                console.log('Enlace de documento detectado:', documentLink); // Para depuración
-                event.preventDefault();
-                const documentUrl = documentLink.getAttribute('data-document-url');
-                const isGoogleDrive = documentLink.getAttribute('data-google-drive') === 'true';
-                openDocumentModal(documentUrl, isGoogleDrive);
+            const linkSection = event.target.closest('.link-section');
+            if (linkSection) {
+                event.stopPropagation(); // Evitar que el evento se propague
             }
         }
 
