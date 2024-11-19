@@ -4,14 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Oficina Virtual Completa con Contenedores Editables</title>
+    <!-- Importar Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Importar la Fuente Montserrat desde Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* Estilos Generales */
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Roboto', sans-serif;
+            font-family: 'Montserrat', sans-serif;
         }
         body {
             background-color: #1e1e2f;
@@ -174,10 +177,10 @@
             display: none;
         }
         .notification i {
-    font-size: 18px;
-    color: #00d1b2;
-    margin: 16px;
-}
+            font-size: 18px;
+            color: #00d1b2;
+            margin: 16px;
+        }
         .discover-more {
             font-size: 14px;
             font-weight: bold;
@@ -368,6 +371,10 @@
             border-radius: 10px;
             color: #fff;
         }
+        .video-modal-content {
+            width: 80%;
+            max-width: 800px;
+        }
         .modal-header {
             display: flex;
             justify-content: space-between;
@@ -426,6 +433,24 @@
         .modal-footer .add-btn {
             background-color: #00d1b2;
             color: #fff;
+        }
+        /* Modal para Reproducir Video */
+        #videoModal .modal-content {
+            background-color: #1e1e2f;
+            width: 80%;
+            max-width: 800px;
+        }
+        #videoModal .modal-body {
+            position: relative;
+            padding-top: 56.25%; /* 16:9 Aspect Ratio */
+        }
+        #videoModal iframe,
+        #videoModal video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
         }
     </style>
 </head>
@@ -493,6 +518,24 @@
             <div class="modal-footer">
                 <button class="cancel-btn" onclick="closeAddSectionModal()">Cancelar</button>
                 <button class="add-btn" onclick="addNewSection()">Agregar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Reproducir Video -->
+    <div id="videoModal" class="modal" aria-hidden="true">
+        <div class="modal-content video-modal-content">
+            <div class="modal-header">
+                <h2>Reproduciendo Video</h2>
+                <span class="close-modal" onclick="closeVideoModal()" aria-label="Cerrar modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <!-- Video Directo -->
+                <video id="videoPlayer" controls>
+                    <source id="videoSource" src="" type="">
+                    Tu navegador no soporta la etiqueta de video.
+                </video>
+                <!-- Iframe para YouTube (se crea dinámicamente si es necesario) -->
             </div>
         </div>
     </div>
@@ -578,6 +621,8 @@
         // Cargar tarjetas guardadas al inicio
         document.addEventListener('DOMContentLoaded', () => {
             loadCards();
+            // Agregar evento delegación para enlaces de video
+            document.body.addEventListener('click', handleLinkClick);
         });
 
         // Función para cargar tarjetas desde localStorage
@@ -668,7 +713,7 @@
                     element.focus();
                 });
 
-                // Deshabilitar la edición al perder el foco
+                // Deshabilitar la edición al presionar Enter
                 element.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
@@ -922,15 +967,69 @@
             if (!linkUrl || !linkName) return;
 
             try {
-                const hostname = new URL(linkUrl).hostname;
-                const faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}`;
-                const linkSection = document.createElement('div');
-                linkSection.className = 'link-section';
+                const url = new URL(linkUrl);
+                const hostname = url.hostname.toLowerCase();
+                const pathname = url.pathname.toLowerCase();
+                const extension = pathname.split('.').pop();
+                const videoExtensions = ['mp4', 'webm', 'ogg'];
+                const videoPlatforms = ['youtube.com', 'youtu.be', 'vimeo.com'];
 
-                linkSection.innerHTML = `
-                    <img src="${faviconUrl}" alt="Favicon">
-                    <a href="${linkUrl}" target="_blank" class="editable-link">${linkName}</a>
-                `;
+                let isVideo = false;
+                let videoType = ''; // 'direct' o 'youtube'
+
+                // Verificar si el hostname termina con alguna de las plataformas de video
+                if (videoExtensions.includes(extension)) {
+                    isVideo = true;
+                    videoType = 'direct';
+                } else if (videoPlatforms.some(platform => hostname === platform || hostname.endsWith('.' + platform))) {
+                    isVideo = true;
+                    videoType = 'youtube';
+                }
+
+                let faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}`;
+                let linkSection;
+
+                if (isVideo) {
+                    linkSection = document.createElement('div');
+                    linkSection.className = 'link-section';
+
+                    if (videoType === 'direct') {
+                        // Para enlaces directos a videos
+                        linkSection.innerHTML = `
+                            <img src="${faviconUrl}" alt="Favicon">
+                            <a href="#" class="editable-link video-link" data-video-type="direct" data-video-url="${linkUrl}">${linkName}</a>
+                        `;
+                    } else if (videoType === 'youtube') {
+                        // Para enlaces de YouTube
+                        // Extraer el ID del video
+                        let videoId = '';
+                        if (hostname === 'youtu.be') {
+                            videoId = pathname.slice(1);
+                        } else {
+                            videoId = url.searchParams.get('v');
+                        }
+                        if (videoId) {
+                            linkSection.innerHTML = `
+                                <img src="${faviconUrl}" alt="Favicon">
+                                <a href="#" class="editable-link video-link" data-video-type="youtube" data-video-id="${videoId}">${linkName}</a>
+                            `;
+                        } else {
+                            // Si no se puede extraer el ID, tratarlo como enlace normal
+                            linkSection.innerHTML = `
+                                <img src="${faviconUrl}" alt="Favicon">
+                                <a href="${linkUrl}" target="_blank" class="editable-link">${linkName}</a>
+                            `;
+                        }
+                    }
+                } else {
+                    // Enlaces normales
+                    linkSection = document.createElement('div');
+                    linkSection.className = 'link-section';
+                    linkSection.innerHTML = `
+                        <img src="${faviconUrl}" alt="Favicon">
+                        <a href="${linkUrl}" target="_blank" class="editable-link">${linkName}</a>
+                    `;
+                }
 
                 const linksContainer = button.closest('.card').querySelector('.links');
                 linksContainer.appendChild(linkSection);
@@ -941,6 +1040,7 @@
             }
         }
 
+        // Función para guardar los enlaces en cardsData
         function saveLinkData(card) {
             const sectionId = card.parentElement.id;
             const cardId = card.getAttribute('data-card-id');
@@ -1121,9 +1221,14 @@
 
         // Cerrar el modal al hacer clic fuera del contenido
         window.onclick = function(event) {
-            const modal = document.getElementById('addSectionModal');
-            if (event.target == modal) {
+            const addSectionModal = document.getElementById('addSectionModal');
+            if (event.target == addSectionModal) {
                 closeAddSectionModal();
+            }
+
+            const videoModal = document.getElementById('videoModal');
+            if (event.target == videoModal) {
+                closeVideoModal();
             }
         }
 
@@ -1138,6 +1243,101 @@
                 });
             }
         });
+
+        // --- Nuevas Funcionalidades para Video ---
+
+        // Función para manejar clics en enlaces
+        function handleLinkClick(event) {
+            const link = event.target.closest('a.video-link');
+            if (link) {
+                console.log('Enlace de video detectado:', link); // Para depuración
+                event.preventDefault();
+                const videoType = link.getAttribute('data-video-type');
+                if (videoType === 'direct') {
+                    const videoUrl = link.getAttribute('data-video-url');
+                    openVideoModal('direct', videoUrl);
+                } else if (videoType === 'youtube') {
+                    const videoId = link.getAttribute('data-video-id');
+                    openVideoModal('youtube', videoId);
+                }
+            }
+        }
+
+        // Función para abrir el modal de video
+        function openVideoModal(type, identifier) {
+            const videoModal = document.getElementById('videoModal');
+            const videoPlayer = document.getElementById('videoPlayer');
+            let iframe = document.getElementById('youtubeIframe');
+
+            if (type === 'direct') {
+                // Configurar video para enlaces directos
+                videoPlayer.style.display = 'block';
+                videoPlayer.src = identifier;
+                videoPlayer.type = getVideoMimeType(identifier);
+                videoPlayer.load();
+
+                // Ocultar iframe si existe
+                if (iframe) {
+                    iframe.style.display = 'none';
+                }
+            } else if (type === 'youtube') {
+                // Configurar iframe para YouTube
+                videoPlayer.style.display = 'none'; // Ocultar el elemento video
+
+                // Crear o actualizar un iframe para YouTube
+                if (!iframe) {
+                    iframe = document.createElement('iframe');
+                    iframe.id = 'youtubeIframe';
+                    iframe.width = '100%';
+                    iframe.height = '100%';
+                    iframe.frameBorder = '0';
+                    iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+                    iframe.allowFullscreen = true;
+                    document.querySelector('#videoModal .modal-body').appendChild(iframe);
+                }
+                iframe.src = `https://www.youtube.com/embed/${identifier}?autoplay=1`;
+                iframe.style.display = 'block';
+            }
+
+            videoModal.style.display = 'block';
+            videoModal.setAttribute('aria-hidden', 'false');
+        }
+
+        // Función para cerrar el modal de video
+        function closeVideoModal() {
+            const videoModal = document.getElementById('videoModal');
+            const videoPlayer = document.getElementById('videoPlayer');
+            const iframe = document.getElementById('youtubeIframe');
+
+            // Pausar el video si es directo
+            if (videoPlayer.src) {
+                videoPlayer.pause();
+                videoPlayer.src = '';
+            }
+
+            // Detener el iframe de YouTube
+            if (iframe && iframe.src) {
+                iframe.src = '';
+            }
+
+            videoModal.style.display = 'none';
+            videoModal.setAttribute('aria-hidden', 'true');
+        }
+
+        // Función para obtener el tipo MIME del video basado en su extensión
+        function getVideoMimeType(url) {
+            const extension = url.split('.').pop().toLowerCase();
+            switch (extension) {
+                case 'mp4':
+                    return 'video/mp4';
+                case 'webm':
+                    return 'video/webm';
+                case 'ogg':
+                    return 'video/ogg';
+                default:
+                    return 'video/mp4'; // Valor por defecto
+            }
+        }
     </script>
 </body>
 </html>
