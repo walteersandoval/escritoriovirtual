@@ -174,10 +174,9 @@
             display: none;
         }
         .notification i {
-    font-size: 18px;
-    color: #00d1b2;
-    margin: 10px;
-}
+            font-size: 18px;
+            color: #00d1b2;
+        }
         .discover-more {
             font-size: 14px;
             font-weight: bold;
@@ -435,7 +434,7 @@
             <i class="fas fa-angle-double-left"></i>
         </div>
         <div class="logo">
-            <img src="https://storage.builderall.com//franquias/2/6377743/editor-html/12099886.png" alt="Logotipo">
+            <img src="https://www.yourlogo.com/logo.png" alt="Logotipo">
         </div>
         <div class="search-bar">
             <i class="fas fa-search"></i>
@@ -496,11 +495,9 @@
             </div>
         </div>
     </div>
-<!-- Incluir Dexie.js desde CDN -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/dexie/3.2.2/dexie.min.js" integrity="sha512-3eJD1Z3d7xePaxAgsoj5CzEgfzR/Gy8GH8M5pKKsHgEd44DRPmGR0wCe5IhIBHgf7yLGjqlgCXw9XqsjULhmRQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-   <script>
- // Variables globales
+    <script>
+        // Variables globales
         let highestZ = 1;
         const gridSize = 10; // Tamaño de la cuadrícula en píxeles (reducido para mayor fluidez)
         let sectionsData = JSON.parse(localStorage.getItem('sections')) || [];
@@ -510,7 +507,7 @@
         if (sectionsData.length === 0) {
             sectionsData = [
                 { id: 'inicio', name: 'Inicio', icon: 'fa-home', deletable: false },
-                { id: 'rutas', name: 'Proyectos', icon: 'fa-route', deletable: false },
+                { id: 'rutas', name: 'Mis Rutas', icon: 'fa-route', deletable: false },
                 { id: 'progreso', name: 'Mi Progreso', icon: 'fa-chart-line', deletable: false },
                 { id: 'chat', name: 'Chat ADA', icon: 'fa-comments', deletable: false },
                 { id: 'notificaciones', name: 'Notificaciones', icon: 'fa-bell', deletable: false }
@@ -529,10 +526,10 @@
                 menuItem.className = 'menu-item';
                 menuItem.setAttribute('data-section-id', section.id);
                 menuItem.onclick = () => showSection(section.id);
-                menuItem.innerHTML = 
+                menuItem.innerHTML = `
                     <i class="fas ${section.icon}"></i>
                     <span>${section.name}</span>
-                ;
+                `;
 
                 // Si la sección es deletable, añadir el ícono de eliminar
                 if (section.deletable) {
@@ -552,11 +549,11 @@
                 const sectionDiv = document.createElement('div');
                 sectionDiv.className = 'section';
                 sectionDiv.id = section.id;
-                sectionDiv.setAttribute('aria-labelledby', ${section.id}-title);
-                sectionDiv.innerHTML = 
+                sectionDiv.setAttribute('aria-labelledby', `${section.id}-title`);
+                sectionDiv.innerHTML = `
                     <h2 class="section-title" id="${section.id}-title">${section.name}</h2>
                     <i class="fas fa-plus add-icon" onclick="addCard('${section.id}')" aria-label="Agregar tarjeta"></i>
-                ;
+                `;
                 sectionsContainer.appendChild(sectionDiv);
             });
         }
@@ -603,7 +600,7 @@
             card.className = 'card';
             card.setAttribute('tabindex', '0');
             card.setAttribute('aria-grabbed', 'false');
-            card.innerHTML = 
+            card.innerHTML = `
                 <h3 class="editable" contenteditable="false">${title}</h3>
                 <p class="editable" contenteditable="false">${description}</p>
                 <div class="links">${linksHTML}</div>
@@ -615,7 +612,7 @@
                 <div class="menu-opciones">
                     <button onclick="addLink(this)">Agregar Enlace</button>
                 </div>
-            ;
+            `;
             card.style.left = left;
             card.style.top = top;
             section.appendChild(card);
@@ -700,8 +697,8 @@
                     cancelAnimationFrame(animationFrameId);
                 }
                 animationFrameId = requestAnimationFrame(() => {
-                    card.style.left = ${currentX}px;
-                    card.style.top = ${currentY}px;
+                    card.style.left = `${currentX}px`;
+                    card.style.top = `${currentY}px`;
                 });
             }
 
@@ -728,8 +725,8 @@
                     cancelAnimationFrame(animationFrameId);
                 }
                 animationFrameId = requestAnimationFrame(() => {
-                    card.style.left = ${currentX}px;
-                    card.style.top = ${currentY}px;
+                    card.style.left = `${currentX}px`;
+                    card.style.top = `${currentY}px`;
                 });
 
                 event.preventDefault();
@@ -772,25 +769,25 @@
                     case 'ArrowUp':
                         event.preventDefault();
                         currentY = Math.max(currentY - step, 0);
-                        card.style.top = ${currentY}px;
+                        card.style.top = `${currentY}px`;
                         saveCards();
                         break;
                     case 'ArrowDown':
                         event.preventDefault();
                         currentY = Math.min(currentY + step, section.clientHeight - card.offsetHeight);
-                        card.style.top = ${currentY}px;
+                        card.style.top = `${currentY}px`;
                         saveCards();
                         break;
                     case 'ArrowLeft':
                         event.preventDefault();
                         currentX = Math.max(currentX - step, 0);
-                        card.style.left = ${currentX}px;
+                        card.style.left = `${currentX}px`;
                         saveCards();
                         break;
                     case 'ArrowRight':
                         event.preventDefault();
                         currentX = Math.min(currentX + step, section.clientWidth - card.offsetWidth);
-                        card.style.left = ${currentX}px;
+                        card.style.left = `${currentX}px`;
                         saveCards();
                         break;
                     case 'Enter':
@@ -832,14 +829,14 @@
 
             try {
                 const hostname = new URL(linkUrl).hostname;
-                const faviconUrl = https://www.google.com/s2/favicons?domain=${hostname};
+                const faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}`;
                 const linkSection = document.createElement('div');
                 linkSection.className = 'link-section';
 
-                linkSection.innerHTML = 
+                linkSection.innerHTML = `
                     <img src="${faviconUrl}" alt="Favicon">
                     <a href="${linkUrl}" target="_blank" class="editable-link">${linkName}</a>
-                ;
+                `;
 
                 const linksContainer = button.closest('.card').querySelector('.links');
                 linksContainer.appendChild(linkSection);
@@ -977,10 +974,10 @@
             menuItem.className = 'menu-item deletable';
             menuItem.setAttribute('data-section-id', newSection.id);
             menuItem.onclick = () => showSection(newSection.id);
-            menuItem.innerHTML = 
+            menuItem.innerHTML = `
                 <i class="fas ${newSection.icon}"></i>
                 <span>${newSection.name}</span>
-            ;
+            `;
             // Añadir ícono de eliminar
             const deleteIcon = document.createElement('i');
             deleteIcon.className = 'fas fa-trash-alt delete-section';
@@ -998,11 +995,11 @@
             const sectionDiv = document.createElement('div');
             sectionDiv.className = 'section';
             sectionDiv.id = newSection.id;
-            sectionDiv.setAttribute('aria-labelledby', ${newSection.id}-title);
-            sectionDiv.innerHTML = 
+            sectionDiv.setAttribute('aria-labelledby', `${newSection.id}-title`);
+            sectionDiv.innerHTML = `
                 <h2 class="section-title" id="${newSection.id}-title">${newSection.name}</h2>
                 <i class="fas fa-plus add-icon" onclick="addCard('${newSection.id}')" aria-label="Agregar tarjeta"></i>
-            ;
+            `;
             sectionsContainer.appendChild(sectionDiv);
 
             // Cerrar el modal
@@ -1028,7 +1025,6 @@
                 });
             }
         });
-</script>
-
+    </script>
 </body>
 </html>
