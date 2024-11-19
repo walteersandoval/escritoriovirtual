@@ -379,7 +379,7 @@
             border-radius: 10px;
             color: #fff;
         }
-        .video-modal-content, .image-modal-content {
+        .video-modal-content, .image-modal-content, .document-modal-content {
             width: 80%;
             max-width: 800px;
         }
@@ -474,6 +474,24 @@
             max-width: 100%;
             max-height: 80vh;
             border-radius: 10px;
+        }
+        /* Modal para Visualizar Documento */
+        #documentModal .modal-content {
+            background-color: #1e1e2f;
+            width: 80%;
+            max-width: 800px;
+        }
+        #documentModal .modal-body {
+            position: relative;
+            padding-top: 56.25%; /* 16:9 Aspect Ratio */
+        }
+        #documentModal iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
         }
     </style>
 </head>
@@ -572,6 +590,19 @@
             </div>
             <div class="modal-body">
                 <img id="modalImage" src="" alt="Imagen">
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Visualizar Documento -->
+    <div id="documentModal" class="modal" aria-hidden="true">
+        <div class="modal-content document-modal-content">
+            <div class="modal-header">
+                <h2>Visualizando Documento</h2>
+                <span class="close-modal" onclick="closeDocumentModal()" aria-label="Cerrar modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <iframe id="documentIframe" src="" frameborder="0"></iframe>
             </div>
         </div>
     </div>
@@ -1010,12 +1041,15 @@
                 const videoExtensions = ['mp4', 'webm', 'ogg'];
                 const videoPlatforms = ['youtube.com', 'youtu.be', 'vimeo.com'];
                 const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'];
+                const docExtensions = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'pdf'];
 
                 let isVideo = false;
                 let videoType = ''; // 'direct' o 'youtube'
                 let isImage = false;
+                let isDocument = false;
+                let isGoogleDrive = false;
 
-                // Verificar si el hostname termina con alguna de las plataformas de video
+                // Verificar si es video
                 if (videoExtensions.includes(extension)) {
                     isVideo = true;
                     videoType = 'direct';
@@ -1024,24 +1058,29 @@
                     videoType = 'youtube';
                 } else if (imageExtensions.includes(extension)) {
                     isImage = true;
+                } else if (docExtensions.includes(extension)) {
+                    isDocument = true;
+                }
+
+                // Verificar si es un enlace de Google Drive
+                if (hostname.includes('drive.google.com') || hostname.includes('docs.google.com')) {
+                    isDocument = true;
+                    isGoogleDrive = true;
                 }
 
                 let faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}`;
                 let linkSection;
 
                 if (isVideo) {
-                    linkSection = document.createElement('div');
-                    linkSection.className = 'link-section';
-
+                    // Para enlaces de video
                     if (videoType === 'direct') {
-                        // Para enlaces directos a videos
+                        linkSection = document.createElement('div');
+                        linkSection.className = 'link-section';
                         linkSection.innerHTML = `
                             <img src="${faviconUrl}" alt="Favicon">
                             <a href="#" class="editable-link video-link" data-video-type="direct" data-video-url="${linkUrl}">${linkName}</a>
                         `;
                     } else if (videoType === 'youtube') {
-                        // Para enlaces de YouTube
-                        // Extraer el ID del video
                         let videoId = '';
                         if (hostname === 'youtu.be') {
                             videoId = pathname.slice(1);
@@ -1049,12 +1088,16 @@
                             videoId = url.searchParams.get('v');
                         }
                         if (videoId) {
+                            linkSection = document.createElement('div');
+                            linkSection.className = 'link-section';
                             linkSection.innerHTML = `
                                 <img src="${faviconUrl}" alt="Favicon">
                                 <a href="#" class="editable-link video-link" data-video-type="youtube" data-video-id="${videoId}">${linkName}</a>
                             `;
                         } else {
-                            // Si no se puede extraer el ID, tratarlo como enlace normal
+                            // Enlace normal si no se puede extraer el ID
+                            linkSection = document.createElement('div');
+                            linkSection.className = 'link-section';
                             linkSection.innerHTML = `
                                 <img src="${faviconUrl}" alt="Favicon">
                                 <a href="${linkUrl}" target="_blank" class="editable-link">${linkName}</a>
@@ -1068,6 +1111,14 @@
                     linkSection.innerHTML = `
                         <img src="${linkUrl}" alt="${linkName}" class="image-link-thumbnail" data-image-url="${linkUrl}">
                         <a href="#" class="editable-link image-link" data-image-url="${linkUrl}">${linkName}</a>
+                    `;
+                } else if (isDocument) {
+                    // Para enlaces de documentos
+                    linkSection = document.createElement('div');
+                    linkSection.className = 'link-section';
+                    linkSection.innerHTML = `
+                        <img src="${faviconUrl}" alt="Favicon">
+                        <a href="#" class="editable-link document-link" data-document-url="${linkUrl}" data-google-drive="${isGoogleDrive}">${linkName}</a>
                     `;
                 } else {
                     // Enlaces normales
@@ -1283,6 +1334,11 @@
             if (event.target == imageModal) {
                 closeImageModal();
             }
+
+            const documentModal = document.getElementById('documentModal');
+            if (event.target == documentModal) {
+                closeDocumentModal();
+            }
         }
 
         // Cerrar menús de opciones al hacer clic fuera
@@ -1327,6 +1383,15 @@
                 event.preventDefault();
                 const imageUrl = imageThumbnail.getAttribute('data-image-url');
                 openImageModal(imageUrl);
+            }
+
+            const documentLink = event.target.closest('a.document-link');
+            if (documentLink) {
+                console.log('Enlace de documento detectado:', documentLink); // Para depuración
+                event.preventDefault();
+                const documentUrl = documentLink.getAttribute('data-document-url');
+                const isGoogleDrive = documentLink.getAttribute('data-google-drive') === 'true';
+                openDocumentModal(documentUrl, isGoogleDrive);
             }
         }
 
@@ -1422,6 +1487,71 @@
             modalImage.src = '';
             imageModal.style.display = 'none';
             imageModal.setAttribute('aria-hidden', 'true');
+        }
+
+        // Función para abrir el modal de documento
+        function openDocumentModal(documentUrl, isGoogleDrive) {
+            const documentModal = document.getElementById('documentModal');
+            const documentIframe = document.getElementById('documentIframe');
+
+            if (isGoogleDrive) {
+                // Modificar la URL para que sea embebible
+                documentUrl = convertToEmbedUrl(documentUrl);
+                if (!documentUrl) {
+                    alert("No se puede visualizar este documento en el visor.");
+                    return;
+                }
+                documentIframe.src = documentUrl;
+            } else {
+                const encodedUrl = encodeURIComponent(documentUrl);
+                documentIframe.src = `https://docs.google.com/gview?url=${encodedUrl}&embedded=true`;
+            }
+
+            documentModal.style.display = 'block';
+            documentModal.setAttribute('aria-hidden', 'false');
+        }
+
+        // Función para cerrar el modal de documento
+        function closeDocumentModal() {
+            const documentModal = document.getElementById('documentModal');
+            const documentIframe = document.getElementById('documentIframe');
+            documentIframe.src = '';
+            documentModal.style.display = 'none';
+            documentModal.setAttribute('aria-hidden', 'true');
+        }
+
+        // Función para convertir URLs de Google Drive a URLs embebibles
+        function convertToEmbedUrl(url) {
+            try {
+                const parsedUrl = new URL(url);
+                const hostname = parsedUrl.hostname;
+                const pathname = parsedUrl.pathname;
+
+                if (hostname.includes('docs.google.com')) {
+                    // Google Docs, Sheets, Slides
+                    if (pathname.includes('/document/')) {
+                        return url.replace(/\/edit.*$/, '/preview');
+                    } else if (pathname.includes('/spreadsheets/')) {
+                        return url.replace(/\/edit.*$/, '/preview');
+                    } else if (pathname.includes('/presentation/')) {
+                        return url.replace(/\/edit.*$/, '/preview');
+                    } else {
+                        return null;
+                    }
+                } else if (hostname.includes('drive.google.com')) {
+                    // Archivos en Google Drive
+                    const fileIdMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+                    if (fileIdMatch && fileIdMatch[1]) {
+                        return `https://drive.google.com/file/d/${fileIdMatch[1]}/preview`;
+                    } else {
+                        return null;
+                    }
+                } else {
+                    return null;
+                }
+            } catch (error) {
+                return null;
+            }
         }
     </script>
 </body>
