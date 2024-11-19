@@ -294,6 +294,7 @@
             margin-bottom: 10px;
             cursor: pointer;
             transition: background 0.3s;
+            position: relative;
         }
         .link-section:hover {
             background-color: #3b3b59;
@@ -308,6 +309,17 @@
             color: #fff; /* Texto de color blanco */
             font-size: 14px;
             font-weight: 500;
+        }
+        /* Estilos para el icono de eliminar en los enlaces */
+        .link-delete-icon {
+            display: none;
+            margin-left: auto;
+            color: #ff6b6b;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .card.edit-mode .link-delete-icon {
+            display: inline;
         }
         .editable {
             outline: none;
@@ -827,11 +839,47 @@
             card.style.top = cardData.top;
             section.appendChild(card);
 
+            // Procesar enlaces para agregar íconos de eliminar y eventos
+            processLinks(card);
+
             // Añadir eventos de arrastre
             makeDraggable(card, section);
 
             // Habilitar edición en título y descripción
             enableCardEditing(card, sectionId, cardData.id);
+        }
+
+        // Función para procesar enlaces y agregar íconos de eliminar
+        function processLinks(card) {
+            const linksContainer = card.querySelector('.links');
+            const linkSections = linksContainer.querySelectorAll('.link-section');
+
+            linkSections.forEach(linkSection => {
+                // Verificar si ya tiene el ícono de eliminar
+                let deleteIcon = linkSection.querySelector('.link-delete-icon');
+                if (!deleteIcon) {
+                    // Crear ícono de eliminar
+                    deleteIcon = document.createElement('i');
+                    deleteIcon.className = 'fas fa-trash-alt link-delete-icon';
+                    deleteIcon.title = 'Eliminar enlace';
+                    linkSection.appendChild(deleteIcon);
+
+                    // Agregar evento de clic para eliminar
+                    deleteIcon.addEventListener('click', (e) => {
+                        e.stopPropagation(); // Evitar que se active el enlace
+                        deleteLink(linkSection);
+                    });
+                }
+            });
+        }
+
+        // Función para eliminar un enlace
+        function deleteLink(linkSection) {
+            if (confirm("¿Estás seguro de que deseas eliminar este enlace?")) {
+                const card = linkSection.closest('.card');
+                linkSection.remove();
+                saveLinkData(card);
+            }
         }
 
         // Función para habilitar la edición de tarjetas
@@ -1153,6 +1201,7 @@
                         linkSection.innerHTML = `
                             <img src="${faviconUrl}" alt="Favicon">
                             <span class="editable-link video-link" data-video-type="direct" data-video-url="${linkUrl}">${linkName}</span>
+                            <i class="fas fa-trash-alt link-delete-icon" title="Eliminar enlace"></i>
                         `;
                         linkSection.onclick = () => openVideoModal('direct', linkUrl);
                     } else if (videoType === 'youtube') {
@@ -1168,6 +1217,7 @@
                             linkSection.innerHTML = `
                                 <img src="${faviconUrl}" alt="Favicon">
                                 <span class="editable-link video-link" data-video-type="youtube" data-video-id="${videoId}">${linkName}</span>
+                                <i class="fas fa-trash-alt link-delete-icon" title="Eliminar enlace"></i>
                             `;
                             linkSection.onclick = () => openVideoModal('youtube', videoId);
                         } else {
@@ -1177,6 +1227,7 @@
                             linkSection.innerHTML = `
                                 <img src="${faviconUrl}" alt="Favicon">
                                 <span class="editable-link">${linkName}</span>
+                                <i class="fas fa-trash-alt link-delete-icon" title="Eliminar enlace"></i>
                             `;
                             linkSection.onclick = () => window.open(linkUrl, '_blank');
                         }
@@ -1188,6 +1239,7 @@
                     linkSection.innerHTML = `
                         <img src="${linkUrl}" alt="${linkName}">
                         <span class="editable-link image-link" data-image-url="${linkUrl}">${linkName}</span>
+                        <i class="fas fa-trash-alt link-delete-icon" title="Eliminar enlace"></i>
                     `;
                     linkSection.onclick = () => openImageModal(linkUrl);
                 } else if (isDocument) {
@@ -1197,6 +1249,7 @@
                     linkSection.innerHTML = `
                         <img src="${faviconUrl}" alt="Favicon">
                         <span class="editable-link document-link" data-document-url="${linkUrl}" data-google-drive="${isGoogleDrive}">${linkName}</span>
+                        <i class="fas fa-trash-alt link-delete-icon" title="Eliminar enlace"></i>
                     `;
                     linkSection.onclick = () => openDocumentModal(linkUrl, isGoogleDrive);
                 } else {
@@ -1206,9 +1259,17 @@
                     linkSection.innerHTML = `
                         <img src="${faviconUrl}" alt="Favicon">
                         <span class="editable-link">${linkName}</span>
+                        <i class="fas fa-trash-alt link-delete-icon" title="Eliminar enlace"></i>
                     `;
                     linkSection.onclick = () => window.open(linkUrl, '_blank');
                 }
+
+                // Agregar evento de eliminación al ícono
+                const deleteIcon = linkSection.querySelector('.link-delete-icon');
+                deleteIcon.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteLink(linkSection);
+                });
 
                 const linksContainer = button.closest('.card').querySelector('.links');
                 linksContainer.appendChild(linkSection);
@@ -1247,6 +1308,15 @@
             });
 
             icon.classList.toggle('active', !isActive);
+
+            if (!isActive) {
+                // Entrando en modo edición
+                card.classList.add('edit-mode');
+            } else {
+                // Saliendo del modo edición
+                card.classList.remove('edit-mode');
+            }
+
             saveCards();
         }
 
