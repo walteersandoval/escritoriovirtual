@@ -500,578 +500,534 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dexie/3.2.2/dexie.min.js" integrity="sha512-3eJD1Z3d7xePaxAgsoj5CzEgfzR/Gy8GH8M5pKKsHgEd44DRPmGR0wCe5IhIBHgf7yLGjqlgCXw9XqsjULhmRQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
    <script>
-    // Inicializar la base de datos con Dexie
-    const db = new Dexie("OfficeVirtualDB");
+ // Variables globales
+        let highestZ = 1;
+        const gridSize = 10; // Tamaño de la cuadrícula en píxeles (reducido para mayor fluidez)
+        let sectionsData = JSON.parse(localStorage.getItem('sections')) || [];
+        let cardsData = JSON.parse(localStorage.getItem('cards')) || {};
 
-    db.version(1).stores({
-        sections: "++id, name, icon, deletable", // ++id crea una clave primaria autoincremental
-        cards: "++id, sectionId, title, description, left, top, links"
-    });
-
-    // Variables globales
-    let highestZ = 1;
-    const gridSize = 10; // Tamaño de la cuadrícula en píxeles (reducido para mayor fluidez)
-    
-    // Función para inicializar las secciones
-    async function initializeSections() {
-        const sections = await db.sections.toArray();
-
-        // Si no hay secciones, añadir las predefinidas
-        if (sections.length === 0) {
-            const defaultSections = [
-                { name: 'Inicio', icon: 'fa-home', deletable: false },
-                { name: 'Proyectos', icon: 'fa-route', deletable: false },
-                { name: 'Mi Progreso', icon: 'fa-chart-line', deletable: false },
-                { name: 'Chat ADA', icon: 'fa-comments', deletable: false },
-                { name: 'Notificaciones', icon: 'fa-bell', deletable: false }
+        // Predefinir las secciones iniciales si no existen
+        if (sectionsData.length === 0) {
+            sectionsData = [
+                { id: 'inicio', name: 'Inicio', icon: 'fa-home', deletable: false },
+                { id: 'rutas', name: 'Proyectos', icon: 'fa-route', deletable: false },
+                { id: 'progreso', name: 'Mi Progreso', icon: 'fa-chart-line', deletable: false },
+                { id: 'chat', name: 'Chat ADA', icon: 'fa-comments', deletable: false },
+                { id: 'notificaciones', name: 'Notificaciones', icon: 'fa-bell', deletable: false }
             ];
-            await db.sections.bulkAdd(defaultSections);
+            localStorage.setItem('sections', JSON.stringify(sectionsData));
         }
 
-        // Obtener todas las secciones después de asegurarse de que existen
-        const allSections = await db.sections.toArray();
-        populateMenu(allSections);
-        createSectionsContainers(allSections);
-        showSection(allSections[0].id); // Mostrar la primera sección por defecto
-    }
-
-    // Función para poblar el menú con las secciones
-    async function populateMenu(sections) {
-        const menu = document.getElementById('menu');
-        menu.innerHTML = ''; // Limpiar menú existente
-
-        sections.forEach(section => {
-            const menuItem = document.createElement('li');
-            menuItem.className = 'menu-item';
-            menuItem.setAttribute('data-section-id', section.id);
-            menuItem.onclick = () => showSection(section.id);
-            menuItem.innerHTML = `
-                <i class="fas ${section.icon}"></i>
-                <span>${section.name}</span>
-            `;
-
-            // Si la sección es deletable, añadir el ícono de eliminar
-            if (section.deletable) {
-                const deleteIcon = document.createElement('i');
-                deleteIcon.className = 'fas fa-trash-alt delete-section';
-                deleteIcon.title = 'Eliminar sección';
-                deleteIcon.onclick = (event) => {
-                    event.stopPropagation(); // Evitar que se active la selección de la sección
-                    deleteSection(section.id);
-                };
-                menuItem.appendChild(deleteIcon);
-            }
-
-            menu.appendChild(menuItem);
-        });
-    }
-
-    // Función para crear contenedores de secciones en el DOM
-    function createSectionsContainers(sections) {
-        const sectionsContainer = document.getElementById('sections-container');
-        sectionsContainer.innerHTML = ''; // Limpiar contenedores existentes
-
-        sections.forEach(section => {
-            const sectionDiv = document.createElement('div');
-            sectionDiv.className = 'section';
-            sectionDiv.id = section.id;
-            sectionDiv.setAttribute('aria-labelledby', `${section.id}-title`);
-            sectionDiv.innerHTML = `
-                <h2 class="section-title" id="${section.id}-title">${section.name}</h2>
-                <i class="fas fa-plus add-icon" onclick="addCard('${section.id}')" aria-label="Agregar tarjeta"></i>
-            `;
-            sectionsContainer.appendChild(sectionDiv);
-        });
-    }
-
-    // Función para mostrar una sección específica
-    function showSection(sectionId) {
-        const sections = document.querySelectorAll('.section');
-        sections.forEach(section => section.style.display = 'none');
-        document.getElementById(sectionId).style.display = 'block';
-    }
-
-    // Función para cargar tarjetas desde IndexedDB
-    async function loadCards() {
-        const allCards = await db.cards.toArray();
-        allCards.forEach(card => {
-            createCard(card.sectionId, card.title, card.description, card.left, card.top, card.links, card.id);
-        });
-    }
-
-    // Función para agregar una nueva tarjeta
-    async function addCard(sectionId) {
-        const cardTitle = prompt("Ingrese el nombre del contenedor:");
-        if (!cardTitle) return;
-
-        const newCard = {
-            sectionId: sectionId,
-            title: cardTitle,
-            description: "Descripción del contenedor.",
-            left: "10px",
-            top: "10px",
-            links: ""
-        };
-
-        const cardId = await db.cards.add(newCard);
-        createCard(sectionId, newCard.title, newCard.description, newCard.left, newCard.top, newCard.links, cardId);
-    }
-
-    // Función para crear una tarjeta en el DOM
-    function createCard(sectionId, title, description, left, top, linksHTML, cardId) {
-        const section = document.getElementById(sectionId);
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.setAttribute('tabindex', '0');
-        card.setAttribute('aria-grabbed', 'false');
-        card.setAttribute('data-card-id', cardId); // Añadir atributo para identificación
-        card.innerHTML = `
-            <h3 class="editable" contenteditable="false">${title}</h3>
-            <p class="editable" contenteditable="false">${description}</p>
-            <div class="links">${linksHTML}</div>
-            <div class="footer-container">
-                <i class="fas fa-pen icon" onclick="toggleEdit(this)" aria-label="Editar tarjeta"></i>
-                <i class="fas fa-plus icon" onclick="toggleCardMenu(this)" aria-label="Agregar opción"></i>
-                <i class="fas fa-trash-alt delete-card" onclick="deleteCard(this)" aria-label="Eliminar tarjeta"></i>
-            </div>
-            <div class="menu-opciones">
-                <button onclick="addLink(this)">Agregar Enlace</button>
-            </div>
-        `;
-        card.style.left = left;
-        card.style.top = top;
-        section.appendChild(card);
-
-        // Añadir eventos de arrastre
-        makeDraggable(card, section);
-    }
-
-    // Función para hacer una tarjeta arrastrable
-    function makeDraggable(card, section) {
-        let offsetX, offsetY;
-        let isDragging = false;
-        let animationFrameId;
-        let currentX = parseInt(card.style.left, 10) || 0;
-        let currentY = parseInt(card.style.top, 10) || 0;
-
-        // Evitar que los clics en iconos inicien el arrastre
-        const icons = card.querySelectorAll('.icon');
-        icons.forEach(icon => {
-            icon.addEventListener('mousedown', (event) => {
-                event.stopPropagation();
-            });
-            icon.addEventListener('touchstart', (event) => {
-                event.stopPropagation();
-            });
-        });
-
-        // Eventos de mouse
-        card.addEventListener('mousedown', (event) => {
-            isDragging = true;
-            offsetX = event.clientX - card.getBoundingClientRect().left;
-            offsetY = event.clientY - card.getBoundingClientRect().top;
-            card.style.cursor = 'grabbing';
-            card.classList.add('dragging');
-            highestZ += 1;
-            card.style.zIndex = highestZ;
-            card.setAttribute('aria-grabbed', 'true');
-
-            document.addEventListener('mousemove', moveCard);
-            document.addEventListener('mouseup', stopDragging);
-
-            event.preventDefault(); // Evita la selección de texto al arrastrar
-        });
-
-        // Eventos táctiles
-        card.addEventListener('touchstart', (event) => {
-            isDragging = true;
-            const touch = event.touches[0];
-            offsetX = touch.clientX - card.getBoundingClientRect().left;
-            offsetY = touch.clientY - card.getBoundingClientRect().top;
-            card.style.cursor = 'grabbing';
-            card.classList.add('dragging');
-            highestZ += 1;
-            card.style.zIndex = highestZ;
-            card.setAttribute('aria-grabbed', 'true');
-
-            document.addEventListener('touchmove', moveCardTouch, { passive: false });
-            document.addEventListener('touchend', stopDraggingTouch);
-
-            event.preventDefault();
-        });
-
-        // Función para mover la tarjeta con mouse
-        function moveCard(event) {
-            if (!isDragging) return;
-            currentX = event.clientX - offsetX - section.getBoundingClientRect().left;
-            currentY = event.clientY - offsetY - section.getBoundingClientRect().top;
-
-            // Snapping a la cuadrícula
-            currentX = Math.round(currentX / gridSize) * gridSize;
-            currentY = Math.round(currentY / gridSize) * gridSize;
-
-            // Limitar dentro del contenedor
-            const relativeWidth = section.clientWidth;
-            const relativeHeight = section.clientHeight;
-
-            currentX = Math.max(0, Math.min(currentX, relativeWidth - card.offsetWidth));
-            currentY = Math.max(0, Math.min(currentY, relativeHeight - card.offsetHeight));
-
-            // Usar requestAnimationFrame para optimizar
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
-            }
-            animationFrameId = requestAnimationFrame(() => {
-                card.style.left = `${currentX}px`;
-                card.style.top = `${currentY}px`;
-            });
-        }
-
-        // Función para mover la tarjeta con touch
-        function moveCardTouch(event) {
-            if (!isDragging) return;
-            const touch = event.touches[0];
-            currentX = touch.clientX - offsetX - section.getBoundingClientRect().left;
-            currentY = touch.clientY - offsetY - section.getBoundingClientRect().top;
-
-            // Snapping a la cuadrícula
-            currentX = Math.round(currentX / gridSize) * gridSize;
-            currentY = Math.round(currentY / gridSize) * gridSize;
-
-            // Limitar dentro del contenedor
-            const relativeWidth = section.clientWidth;
-            const relativeHeight = section.clientHeight;
-
-            currentX = Math.max(0, Math.min(currentX, relativeWidth - card.offsetWidth));
-            currentY = Math.max(0, Math.min(currentY, relativeHeight - card.offsetHeight));
-
-            // Usar requestAnimationFrame para optimizar
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
-            }
-            animationFrameId = requestAnimationFrame(() => {
-                card.style.left = `${currentX}px`;
-                card.style.top = `${currentY}px`;
-            });
-
-            event.preventDefault();
-        }
-
-        // Función para detener el arrastre con mouse
-        function stopDragging(event) {
-            if (!isDragging) return;
-            isDragging = false;
-            card.style.cursor = 'grab';
-            card.classList.remove('dragging');
-            card.setAttribute('aria-grabbed', 'false');
-
-            document.removeEventListener('mousemove', moveCard);
-            document.removeEventListener('mouseup', stopDragging);
-
-            cancelAnimationFrame(animationFrameId);
-            saveCardPosition(card);
-        }
-
-        // Función para detener el arrastre con touch
-        function stopDraggingTouch(event) {
-            if (!isDragging) return;
-            isDragging = false;
-            card.style.cursor = 'grab';
-            card.classList.remove('dragging');
-            card.setAttribute('aria-grabbed', 'false');
-
-            document.removeEventListener('touchmove', moveCardTouch);
-            document.removeEventListener('touchend', stopDraggingTouch);
-
-            cancelAnimationFrame(animationFrameId);
-            saveCardPosition(card);
-        }
-
-        // Accesibilidad: permitir arrastrar con teclado
-        card.addEventListener('keydown', (event) => {
-            const step = gridSize; // Paso de movimiento con teclado
-            switch(event.key) {
-                case 'ArrowUp':
-                    event.preventDefault();
-                    currentY = Math.max(currentY - step, 0);
-                    card.style.top = `${currentY}px`;
-                    saveCardPosition(card);
-                    break;
-                case 'ArrowDown':
-                    event.preventDefault();
-                    currentY = Math.min(currentY + step, section.clientHeight - card.offsetHeight);
-                    card.style.top = `${currentY}px`;
-                    saveCardPosition(card);
-                    break;
-                case 'ArrowLeft':
-                    event.preventDefault();
-                    currentX = Math.max(currentX - step, 0);
-                    card.style.left = `${currentX}px`;
-                    saveCardPosition(card);
-                    break;
-                case 'ArrowRight':
-                    event.preventDefault();
-                    currentX = Math.min(currentX + step, section.clientWidth - card.offsetWidth);
-                    card.style.left = `${currentX}px`;
-                    saveCardPosition(card);
-                    break;
-                case 'Enter':
-                    event.preventDefault();
-                    // Iniciar edición al presionar Enter
-                    toggleEdit(card.querySelector('.icon.fa-pen'));
-                    break;
-            }
-        });
-    }
-
-    // Función para guardar la posición de una tarjeta en IndexedDB
-    async function saveCardPosition(card) {
-        const cardId = parseInt(card.getAttribute('data-card-id'), 10);
-        const newLeft = card.style.left;
-        const newTop = card.style.top;
-
-        await db.cards.update(cardId, { left: newLeft, top: newTop });
-    }
-
-    // Función para alternar el menú principal
-    function toggleDashboardMenu() {
-        const dashboard = document.getElementById('dashboard');
-        const toggleBtnIcon = dashboard.querySelector('.toggle-menu i');
-        dashboard.classList.toggle('collapsed');
-        if (dashboard.classList.contains('collapsed')) {
-            toggleBtnIcon.classList.remove('fa-angle-double-left');
-            toggleBtnIcon.classList.add('fa-angle-double-right');
-        } else {
-            toggleBtnIcon.classList.remove('fa-angle-double-right');
-            toggleBtnIcon.classList.add('fa-angle-double-left');
-        }
-    }
-
-    // Función para alternar el menú de opciones en las tarjetas
-    function toggleCardMenu(icon) {
-        const menu = icon.parentElement.nextElementSibling;
-        const isActive = menu.style.display === 'block';
-        menu.style.display = isActive ? 'none' : 'block';
-        icon.classList.toggle('active', !isActive);
-    }
-
-    // Función para agregar un enlace a una tarjeta
-    async function addLink(button) {
-        const linkUrl = prompt("Ingrese la URL del enlace:");
-        const linkName = prompt("Ingrese el nombre del enlace:");
-        if (!linkUrl || !linkName) return;
-
-        try {
-            const hostname = new URL(linkUrl).hostname;
-            const faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}`;
-            const linkSection = document.createElement('div');
-            linkSection.className = 'link-section';
-
-            linkSection.innerHTML = `
-                <img src="${faviconUrl}" alt="Favicon">
-                <a href="${linkUrl}" target="_blank" class="editable-link">${linkName}</a>
-            `;
-
-            const linksContainer = button.closest('.card').querySelector('.links');
-            linksContainer.appendChild(linkSection);
-            await saveCardLinks(button.closest('.card').getAttribute('data-card-id'), linksContainer.innerHTML);
-        } catch (error) {
-            alert("URL inválida. Por favor, ingrese una URL válida.");
-        }
-    }
-
-    // Función para guardar los enlaces de una tarjeta en IndexedDB
-    async function saveCardLinks(cardId, linksHTML) {
-        await db.cards.update(parseInt(cardId, 10), { links: linksHTML });
-    }
-
-    // Función para alternar la edición de una tarjeta
-    async function toggleEdit(icon) {
-        const card = icon.closest('.card');
-        const elements = card.querySelectorAll('.editable');
-        const isActive = icon.classList.contains('active');
-
-        elements.forEach(element => {
-            element.contentEditable = !isActive;
-            if (!isActive) element.focus();
-        });
-
-        icon.classList.toggle('active', !isActive);
-        await saveCardContent(card);
-    }
-
-    // Función para guardar el contenido de una tarjeta en IndexedDB
-    async function saveCardContent(card) {
-        const cardId = parseInt(card.getAttribute('data-card-id'), 10);
-        const newTitle = card.querySelector('h3').innerText;
-        const newDescription = card.querySelector('p').innerText;
-        const newLinks = card.querySelector('.links').innerHTML;
-
-        await db.cards.update(cardId, {
-            title: newTitle,
-            description: newDescription,
-            links: newLinks
-        });
-    }
-
-    // Función para eliminar una tarjeta
-    async function deleteCard(icon) {
-        const card = icon.closest('.card');
-        const cardId = parseInt(card.getAttribute('data-card-id'), 10);
-        const sectionId = card.parentElement.id;
-
-        if (confirm("¿Estás seguro de que deseas eliminar esta tarjeta?")) {
-            // Eliminar la tarjeta del DOM
-            card.remove();
-
-            // Eliminar la tarjeta de IndexedDB
-            await db.cards.delete(cardId);
-        }
-    }
-
-    // Función para eliminar una sección
-    async function deleteSection(sectionId) {
-        if (confirm("¿Estás seguro de que deseas eliminar esta sección? Todas las tarjetas asociadas también serán eliminadas.")) {
-            // Eliminar la sección del DOM
-            const sectionDiv = document.getElementById(sectionId);
-            sectionDiv.remove();
-
-            // Eliminar la sección del menú
+        // Mostrar las secciones en el menú y crear sus contenedores
+        function initializeSections() {
             const menu = document.getElementById('menu');
-            const menuItems = menu.querySelectorAll('.menu-item');
-            menuItems.forEach(menuItem => {
-                if (parseInt(menuItem.getAttribute('data-section-id'), 10) === sectionId || menuItem.getAttribute('data-section-id') === sectionId) {
-                    menuItem.remove();
+            const sectionsContainer = document.getElementById('sections-container');
+
+            sectionsData.forEach(section => {
+                // Agregar al menú
+                const menuItem = document.createElement('li');
+                menuItem.className = 'menu-item';
+                menuItem.setAttribute('data-section-id', section.id);
+                menuItem.onclick = () => showSection(section.id);
+                menuItem.innerHTML = 
+                    <i class="fas ${section.icon}"></i>
+                    <span>${section.name}</span>
+                ;
+
+                // Si la sección es deletable, añadir el ícono de eliminar
+                if (section.deletable) {
+                    const deleteIcon = document.createElement('i');
+                    deleteIcon.className = 'fas fa-trash-alt delete-section';
+                    deleteIcon.title = 'Eliminar sección';
+                    deleteIcon.onclick = (event) => {
+                        event.stopPropagation(); // Evitar que se active la selección de la sección
+                        deleteSection(section.id);
+                    };
+                    menuItem.appendChild(deleteIcon);
+                }
+
+                menu.appendChild(menuItem);
+
+                // Crear la sección en el contenedor
+                const sectionDiv = document.createElement('div');
+                sectionDiv.className = 'section';
+                sectionDiv.id = section.id;
+                sectionDiv.setAttribute('aria-labelledby', ${section.id}-title);
+                sectionDiv.innerHTML = 
+                    <h2 class="section-title" id="${section.id}-title">${section.name}</h2>
+                    <i class="fas fa-plus add-icon" onclick="addCard('${section.id}')" aria-label="Agregar tarjeta"></i>
+                ;
+                sectionsContainer.appendChild(sectionDiv);
+            });
+        }
+
+        // Mostrar la sección seleccionada
+        function showSection(sectionId) {
+            const sections = document.querySelectorAll('.section');
+            sections.forEach(section => section.style.display = 'none');
+            document.getElementById(sectionId).style.display = 'block';
+        }
+
+        // Inicializar las secciones al cargar
+        initializeSections();
+        showSection(sectionsData[0].id); // Mostrar la primera sección por defecto
+
+        // Cargar tarjetas guardadas al inicio
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCards();
+        });
+
+        // Función para cargar tarjetas desde localStorage
+        function loadCards() {
+            sectionsData.forEach(section => {
+                const savedCards = cardsData[section.id] || [];
+                savedCards.forEach(savedCard => {
+                    createCard(section.id, savedCard.title, savedCard.description, savedCard.left, savedCard.top, savedCard.links);
+                });
+            });
+        }
+
+        // Función para agregar una nueva tarjeta
+        function addCard(sectionId) {
+            const cardTitle = prompt("Ingrese el nombre del contenedor:");
+            if (!cardTitle) return;
+
+            createCard(sectionId, cardTitle, "Descripción del contenedor.", "10px", "10px", "");
+            saveCards();
+        }
+
+        // Función para crear una tarjeta
+        function createCard(sectionId, title, description, left, top, linksHTML) {
+            const section = document.getElementById(sectionId);
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.setAttribute('tabindex', '0');
+            card.setAttribute('aria-grabbed', 'false');
+            card.innerHTML = 
+                <h3 class="editable" contenteditable="false">${title}</h3>
+                <p class="editable" contenteditable="false">${description}</p>
+                <div class="links">${linksHTML}</div>
+                <div class="footer-container">
+                    <i class="fas fa-pen icon" onclick="toggleEdit(this)" aria-label="Editar tarjeta"></i>
+                    <i class="fas fa-plus icon" onclick="toggleCardMenu(this)" aria-label="Agregar opción"></i>
+                    <i class="fas fa-trash-alt delete-card" onclick="deleteCard(this)" aria-label="Eliminar tarjeta"></i>
+                </div>
+                <div class="menu-opciones">
+                    <button onclick="addLink(this)">Agregar Enlace</button>
+                </div>
+            ;
+            card.style.left = left;
+            card.style.top = top;
+            section.appendChild(card);
+
+            // Añadir eventos de arrastre
+            makeDraggable(card, section);
+        }
+
+        // Función para hacer una tarjeta arrastrable
+        function makeDraggable(card, section) {
+            let offsetX, offsetY;
+            let isDragging = false;
+            let animationFrameId;
+            let currentX = parseInt(card.style.left, 10) || 0;
+            let currentY = parseInt(card.style.top, 10) || 0;
+
+            // Evitar que los clics en iconos inicien el arrastre
+            const icons = card.querySelectorAll('.icon');
+            icons.forEach(icon => {
+                icon.addEventListener('mousedown', (event) => {
+                    event.stopPropagation();
+                });
+                icon.addEventListener('touchstart', (event) => {
+                    event.stopPropagation();
+                });
+            });
+
+            // Eventos de mouse
+            card.addEventListener('mousedown', (event) => {
+                isDragging = true;
+                offsetX = event.clientX - card.getBoundingClientRect().left;
+                offsetY = event.clientY - card.getBoundingClientRect().top;
+                card.style.cursor = 'grabbing';
+                card.classList.add('dragging');
+                highestZ += 1;
+                card.style.zIndex = highestZ;
+                card.setAttribute('aria-grabbed', 'true');
+
+                document.addEventListener('mousemove', moveCard);
+                document.addEventListener('mouseup', stopDragging);
+
+                event.preventDefault(); // Evita la selección de texto al arrastrar
+            });
+
+            // Eventos táctiles
+            card.addEventListener('touchstart', (event) => {
+                isDragging = true;
+                const touch = event.touches[0];
+                offsetX = touch.clientX - card.getBoundingClientRect().left;
+                offsetY = touch.clientY - card.getBoundingClientRect().top;
+                card.style.cursor = 'grabbing';
+                card.classList.add('dragging');
+                highestZ += 1;
+                card.style.zIndex = highestZ;
+                card.setAttribute('aria-grabbed', 'true');
+
+                document.addEventListener('touchmove', moveCardTouch, { passive: false });
+                document.addEventListener('touchend', stopDraggingTouch);
+
+                event.preventDefault();
+            });
+
+            // Función para mover la tarjeta con mouse
+            function moveCard(event) {
+                if (!isDragging) return;
+                currentX = event.clientX - offsetX - section.getBoundingClientRect().left;
+                currentY = event.clientY - offsetY - section.getBoundingClientRect().top;
+
+                // Snapping a la cuadrícula
+                currentX = Math.round(currentX / gridSize) * gridSize;
+                currentY = Math.round(currentY / gridSize) * gridSize;
+
+                // Limitar dentro del contenedor
+                const relativeWidth = section.clientWidth;
+                const relativeHeight = section.clientHeight;
+
+                currentX = Math.max(0, Math.min(currentX, relativeWidth - card.offsetWidth));
+                currentY = Math.max(0, Math.min(currentY, relativeHeight - card.offsetHeight));
+
+                // Usar requestAnimationFrame para optimizar
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                }
+                animationFrameId = requestAnimationFrame(() => {
+                    card.style.left = ${currentX}px;
+                    card.style.top = ${currentY}px;
+                });
+            }
+
+            // Función para mover la tarjeta con touch
+            function moveCardTouch(event) {
+                if (!isDragging) return;
+                const touch = event.touches[0];
+                currentX = touch.clientX - offsetX - section.getBoundingClientRect().left;
+                currentY = touch.clientY - offsetY - section.getBoundingClientRect().top;
+
+                // Snapping a la cuadrícula
+                currentX = Math.round(currentX / gridSize) * gridSize;
+                currentY = Math.round(currentY / gridSize) * gridSize;
+
+                // Limitar dentro del contenedor
+                const relativeWidth = section.clientWidth;
+                const relativeHeight = section.clientHeight;
+
+                currentX = Math.max(0, Math.min(currentX, relativeWidth - card.offsetWidth));
+                currentY = Math.max(0, Math.min(currentY, relativeHeight - card.offsetHeight));
+
+                // Usar requestAnimationFrame para optimizar
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                }
+                animationFrameId = requestAnimationFrame(() => {
+                    card.style.left = ${currentX}px;
+                    card.style.top = ${currentY}px;
+                });
+
+                event.preventDefault();
+            }
+
+            // Función para detener el arrastre con mouse
+            function stopDragging(event) {
+                if (!isDragging) return;
+                isDragging = false;
+                card.style.cursor = 'grab';
+                card.classList.remove('dragging');
+                card.setAttribute('aria-grabbed', 'false');
+
+                document.removeEventListener('mousemove', moveCard);
+                document.removeEventListener('mouseup', stopDragging);
+
+                cancelAnimationFrame(animationFrameId);
+                saveCards();
+            }
+
+            // Función para detener el arrastre con touch
+            function stopDraggingTouch(event) {
+                if (!isDragging) return;
+                isDragging = false;
+                card.style.cursor = 'grab';
+                card.classList.remove('dragging');
+                card.setAttribute('aria-grabbed', 'false');
+
+                document.removeEventListener('touchmove', moveCardTouch);
+                document.removeEventListener('touchend', stopDraggingTouch);
+
+                cancelAnimationFrame(animationFrameId);
+                saveCards();
+            }
+
+            // Accesibilidad: permitir arrastrar con teclado
+            card.addEventListener('keydown', (event) => {
+                const step = gridSize; // Paso de movimiento con teclado
+                switch(event.key) {
+                    case 'ArrowUp':
+                        event.preventDefault();
+                        currentY = Math.max(currentY - step, 0);
+                        card.style.top = ${currentY}px;
+                        saveCards();
+                        break;
+                    case 'ArrowDown':
+                        event.preventDefault();
+                        currentY = Math.min(currentY + step, section.clientHeight - card.offsetHeight);
+                        card.style.top = ${currentY}px;
+                        saveCards();
+                        break;
+                    case 'ArrowLeft':
+                        event.preventDefault();
+                        currentX = Math.max(currentX - step, 0);
+                        card.style.left = ${currentX}px;
+                        saveCards();
+                        break;
+                    case 'ArrowRight':
+                        event.preventDefault();
+                        currentX = Math.min(currentX + step, section.clientWidth - card.offsetWidth);
+                        card.style.left = ${currentX}px;
+                        saveCards();
+                        break;
+                    case 'Enter':
+                        event.preventDefault();
+                        // Iniciar edición al presionar Enter
+                        toggleEdit(card.querySelector('.icon.fa-pen'));
+                        break;
                 }
             });
-
-            // Eliminar la sección de IndexedDB
-            await db.sections.delete(sectionId);
-
-            // Eliminar las tarjetas asociadas de IndexedDB
-            await db.cards.where('sectionId').equals(sectionId).delete();
-        }
-    }
-
-    // Función para guardar todas las tarjetas y secciones en IndexedDB
-    // No es necesario ya que cada cambio individual se guarda en tiempo real
-
-    // Función para abrir el modal de agregar sección
-    function openAddSectionModal() {
-        document.getElementById('addSectionModal').style.display = 'block';
-        document.getElementById('addSectionModal').setAttribute('aria-hidden', 'false');
-    }
-
-    // Función para cerrar el modal de agregar sección
-    function closeAddSectionModal() {
-        document.getElementById('addSectionModal').style.display = 'none';
-        document.getElementById('addSectionModal').setAttribute('aria-hidden', 'true');
-        document.getElementById('sectionName').value = '';
-        const icons = document.querySelectorAll('.icon-option');
-        icons.forEach(icon => icon.classList.remove('selected'));
-    }
-
-    // Función para seleccionar un ícono en el modal
-    function selectIcon(event) {
-        const selectedIcon = event.target;
-        if (selectedIcon.classList.contains('icon-option')) {
-            // Desmarcar otros íconos
-            document.querySelectorAll('.icon-option').forEach(icon => icon.classList.remove('selected'));
-            // Marcar el ícono seleccionado
-            selectedIcon.classList.add('selected');
-        }
-    }
-
-    // Agregar evento de clic a las opciones de íconos
-    document.getElementById('iconSelection').addEventListener('click', selectIcon);
-
-    // Función para agregar una nueva sección
-    async function addNewSection() {
-        const sectionNameInput = document.getElementById('sectionName');
-        const sectionName = sectionNameInput.value.trim();
-        if (!sectionName) {
-            alert("Por favor, ingrese el nombre de la sección.");
-            return;
         }
 
-        const selectedIconElement = document.querySelector('.icon-option.selected');
-        if (!selectedIconElement) {
-            alert("Por favor, seleccione un ícono para la sección.");
-            return;
+        // Función para alternar el menú principal
+        function toggleDashboardMenu() {
+            const dashboard = document.getElementById('dashboard');
+            const toggleBtnIcon = dashboard.querySelector('.toggle-menu i');
+            dashboard.classList.toggle('collapsed');
+            if (dashboard.classList.contains('collapsed')) {
+                toggleBtnIcon.classList.remove('fa-angle-double-left');
+                toggleBtnIcon.classList.add('fa-angle-double-right');
+            } else {
+                toggleBtnIcon.classList.remove('fa-angle-double-right');
+                toggleBtnIcon.classList.add('fa-angle-double-left');
+            }
         }
-        const iconClass = selectedIconElement.getAttribute('data-icon');
 
-        // Crear un objeto para la nueva sección
-        const newSection = {
-            name: sectionName,
-            icon: iconClass,
-            deletable: true
-        };
+        // Función para alternar el menú de opciones en las tarjetas
+        function toggleCardMenu(icon) {
+            const menu = icon.parentElement.nextElementSibling;
+            const isActive = menu.style.display === 'block';
+            menu.style.display = isActive ? 'none' : 'block';
+            icon.classList.toggle('active', !isActive);
+        }
 
-        // Añadir la nueva sección a IndexedDB
-        const sectionId = await db.sections.add(newSection);
+        // Función para agregar un enlace a una tarjeta
+        function addLink(button) {
+            const linkUrl = prompt("Ingrese la URL del enlace:");
+            const linkName = prompt("Ingrese el nombre del enlace:");
+            if (!linkUrl || !linkName) return;
 
-        // Añadir al menú
-        const menu = document.getElementById('menu');
-        const menuItem = document.createElement('li');
-        menuItem.className = 'menu-item deletable';
-        menuItem.setAttribute('data-section-id', sectionId);
-        menuItem.onclick = () => showSection(sectionId);
-        menuItem.innerHTML = `
-            <i class="fas ${iconClass}"></i>
-            <span>${sectionName}</span>
-        `;
-        // Añadir ícono de eliminar
-        const deleteIcon = document.createElement('i');
-        deleteIcon.className = 'fas fa-trash-alt delete-section';
-        deleteIcon.title = 'Eliminar sección';
-        deleteIcon.onclick = (event) => {
-            event.stopPropagation(); // Evitar que se active la selección de la sección
-            deleteSection(sectionId);
-        };
-        menuItem.appendChild(deleteIcon);
+            try {
+                const hostname = new URL(linkUrl).hostname;
+                const faviconUrl = https://www.google.com/s2/favicons?domain=${hostname};
+                const linkSection = document.createElement('div');
+                linkSection.className = 'link-section';
 
-        menu.appendChild(menuItem);
+                linkSection.innerHTML = 
+                    <img src="${faviconUrl}" alt="Favicon">
+                    <a href="${linkUrl}" target="_blank" class="editable-link">${linkName}</a>
+                ;
 
-        // Crear la sección en el contenedor
-        const sectionsContainer = document.getElementById('sections-container');
-        const sectionDiv = document.createElement('div');
-        sectionDiv.className = 'section';
-        sectionDiv.id = sectionId;
-        sectionDiv.setAttribute('aria-labelledby', `${sectionId}-title`);
-        sectionDiv.innerHTML = `
-            <h2 class="section-title" id="${sectionId}-title">${sectionName}</h2>
-            <i class="fas fa-plus add-icon" onclick="addCard('${sectionId}')" aria-label="Agregar tarjeta"></i>
-        `;
-        sectionsContainer.appendChild(sectionDiv);
+                const linksContainer = button.closest('.card').querySelector('.links');
+                linksContainer.appendChild(linkSection);
+                saveCards();
+            } catch (error) {
+                alert("URL inválida. Por favor, ingrese una URL válida.");
+            }
+        }
 
-        // Cerrar el modal
-        closeAddSectionModal();
-    }
+        // Función para alternar la edición de una tarjeta
+        function toggleEdit(icon) {
+            const card = icon.closest('.card');
+            const elements = card.querySelectorAll('.editable');
+            const isActive = icon.classList.contains('active');
 
-    // Cerrar el modal al hacer clic fuera del contenido
-    window.onclick = function(event) {
-        const modal = document.getElementById('addSectionModal');
-        if (event.target == modal) {
+            elements.forEach(element => {
+                element.contentEditable = !isActive;
+                if (!isActive) element.focus();
+            });
+
+            icon.classList.toggle('active', !isActive);
+            saveCards();
+        }
+
+        // Función para eliminar una tarjeta
+        function deleteCard(icon) {
+            const card = icon.closest('.card');
+            const sectionId = card.parentElement.id;
+            const cardIndex = Array.from(card.parentElement.querySelectorAll('.card')).indexOf(card);
+
+            if (confirm("¿Estás seguro de que deseas eliminar esta tarjeta?")) {
+                // Eliminar la tarjeta del DOM
+                card.remove();
+
+                // Eliminar la tarjeta de cardsData
+                if (cardsData[sectionId]) {
+                    cardsData[sectionId].splice(cardIndex, 1);
+                    if (cardsData[sectionId].length === 0) {
+                        delete cardsData[sectionId];
+                    }
+                    saveCards();
+                }
+            }
+        }
+
+        // Función para eliminar una sección
+        function deleteSection(sectionId) {
+            if (confirm("¿Estás seguro de que deseas eliminar esta sección? Todas las tarjetas asociadas también serán eliminadas.")) {
+                // Eliminar la sección del DOM
+                const sectionDiv = document.getElementById(sectionId);
+                sectionDiv.remove();
+
+                // Eliminar la sección del menú
+                const menu = document.getElementById('menu');
+                const menuItems = menu.querySelectorAll('.menu-item');
+                menuItems.forEach(menuItem => {
+                    if (menuItem.getAttribute('data-section-id') === sectionId) {
+                        menuItem.remove();
+                    }
+                });
+
+                // Eliminar la sección de sectionsData
+                sectionsData = sectionsData.filter(section => section.id !== sectionId);
+                localStorage.setItem('sections', JSON.stringify(sectionsData));
+
+                // Eliminar las tarjetas asociadas de cardsData
+                if (cardsData[sectionId]) {
+                    delete cardsData[sectionId];
+                    saveCards();
+                }
+            }
+        }
+
+        // Función para guardar el estado de las tarjetas y secciones en localStorage
+        function saveCards() {
+            localStorage.setItem('cards', JSON.stringify(cardsData));
+        }
+
+        // Función para abrir el modal de agregar sección
+        function openAddSectionModal() {
+            document.getElementById('addSectionModal').style.display = 'block';
+            document.getElementById('addSectionModal').setAttribute('aria-hidden', 'false');
+        }
+
+        // Función para cerrar el modal de agregar sección
+        function closeAddSectionModal() {
+            document.getElementById('addSectionModal').style.display = 'none';
+            document.getElementById('addSectionModal').setAttribute('aria-hidden', 'true');
+            document.getElementById('sectionName').value = '';
+            const icons = document.querySelectorAll('.icon-option');
+            icons.forEach(icon => icon.classList.remove('selected'));
+        }
+
+        // Función para seleccionar un ícono en el modal
+        function selectIcon(event) {
+            const selectedIcon = event.target;
+            if (selectedIcon.classList.contains('icon-option')) {
+                // Desmarcar otros íconos
+                document.querySelectorAll('.icon-option').forEach(icon => icon.classList.remove('selected'));
+                // Marcar el ícono seleccionado
+                selectedIcon.classList.add('selected');
+            }
+        }
+
+        // Agregar evento de clic a las opciones de íconos
+        document.getElementById('iconSelection').addEventListener('click', selectIcon);
+
+        // Función para agregar una nueva sección
+        function addNewSection() {
+            const sectionNameInput = document.getElementById('sectionName');
+            const sectionName = sectionNameInput.value.trim();
+            if (!sectionName) {
+                alert("Por favor, ingrese el nombre de la sección.");
+                return;
+            }
+
+            const selectedIconElement = document.querySelector('.icon-option.selected');
+            if (!selectedIconElement) {
+                alert("Por favor, seleccione un ícono para la sección.");
+                return;
+            }
+            const iconClass = selectedIconElement.getAttribute('data-icon');
+
+            // Crear un ID único para la nueva sección
+            const newSectionId = sectionName.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now();
+
+            // Añadir la nueva sección a las seccionesData
+            const newSection = { id: newSectionId, name: sectionName, icon: iconClass, deletable: true };
+            sectionsData.push(newSection);
+            localStorage.setItem('sections', JSON.stringify(sectionsData));
+
+            // Añadir al menú
+            const menu = document.getElementById('menu');
+            const menuItem = document.createElement('li');
+            menuItem.className = 'menu-item deletable';
+            menuItem.setAttribute('data-section-id', newSection.id);
+            menuItem.onclick = () => showSection(newSection.id);
+            menuItem.innerHTML = 
+                <i class="fas ${newSection.icon}"></i>
+                <span>${newSection.name}</span>
+            ;
+            // Añadir ícono de eliminar
+            const deleteIcon = document.createElement('i');
+            deleteIcon.className = 'fas fa-trash-alt delete-section';
+            deleteIcon.title = 'Eliminar sección';
+            deleteIcon.onclick = (event) => {
+                event.stopPropagation(); // Evitar que se active la selección de la sección
+                deleteSection(newSection.id);
+            };
+            menuItem.appendChild(deleteIcon);
+
+            menu.appendChild(menuItem);
+
+            // Crear la sección en el contenedor
+            const sectionsContainer = document.getElementById('sections-container');
+            const sectionDiv = document.createElement('div');
+            sectionDiv.className = 'section';
+            sectionDiv.id = newSection.id;
+            sectionDiv.setAttribute('aria-labelledby', ${newSection.id}-title);
+            sectionDiv.innerHTML = 
+                <h2 class="section-title" id="${newSection.id}-title">${newSection.name}</h2>
+                <i class="fas fa-plus add-icon" onclick="addCard('${newSection.id}')" aria-label="Agregar tarjeta"></i>
+            ;
+            sectionsContainer.appendChild(sectionDiv);
+
+            // Cerrar el modal
             closeAddSectionModal();
         }
-    }
 
-    // Cerrar menús de opciones al hacer clic fuera
-    document.addEventListener('click', (event) => {
-        if (!event.target.closest('.menu-opciones') && !event.target.closest('.icon.fa-plus') && !event.target.closest('.icon.fa-trash-alt')) {
-            document.querySelectorAll('.menu-opciones').forEach(menu => {
-                menu.style.display = 'none';
-            });
-            document.querySelectorAll('.icon.fa-plus').forEach(icon => {
-                icon.classList.remove('active');
-            });
+        // Cerrar el modal al hacer clic fuera del contenido
+        window.onclick = function(event) {
+            const modal = document.getElementById('addSectionModal');
+            if (event.target == modal) {
+                closeAddSectionModal();
+            }
         }
-    });
 
-    // Inicializar la aplicación
-    initializeSections();
-    loadCards();
+        // Cerrar menús de opciones al hacer clic fuera
+        document.addEventListener('click', (event) => {
+            if (!event.target.closest('.menu-opciones') && !event.target.closest('.icon.fa-plus') && !event.target.closest('.icon.fa-trash-alt')) {
+                document.querySelectorAll('.menu-opciones').forEach(menu => {
+                    menu.style.display = 'none';
+                });
+                document.querySelectorAll('.icon.fa-plus').forEach(icon => {
+                    icon.classList.remove('active');
+                });
+            }
+        });
 </script>
 
 </body>
