@@ -372,12 +372,15 @@
         }
         .modal-content {
             background-color: #2e2f45;
-            margin: 10% auto; /* 10% desde arriba y centrado */
+            margin: 5% auto; /* Ajustado para permitir maximizar */
             padding: 20px;
             border: 1px solid #888;
-            width: 300px; /* Ancho del modal */
+            width: 80%; /* Ancho del modal */
+            max-width: 800px;
             border-radius: 10px;
             color: #fff;
+            position: relative;
+            transition: all 0.3s ease;
         }
         .video-modal-content, .image-modal-content, .document-modal-content {
             width: 80%;
@@ -399,6 +402,17 @@
         }
         .close-modal:hover,
         .close-modal:focus {
+            color: #fff;
+        }
+        .maximize-modal {
+            color: #aaa;
+            font-size: 22px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .maximize-modal:hover,
+        .maximize-modal:focus {
             color: #fff;
         }
         .icon-selection {
@@ -452,6 +466,10 @@
             position: relative;
             padding-top: 56.25%; /* 16:9 Aspect Ratio */
         }
+        #videoModal.fullscreen .modal-body {
+            padding-top: 0;
+            height: calc(100% - 60px); /* Ajuste para cabecera */
+        }
         #videoModal iframe,
         #videoModal video {
             position: absolute;
@@ -466,6 +484,12 @@
             width: 80%;
             max-width: 800px;
         }
+        #imageModal.fullscreen .modal-body {
+            height: calc(100% - 60px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
         #imageModal .modal-body {
             text-align: center;
             padding: 20px;
@@ -475,15 +499,22 @@
             max-height: 80vh;
             border-radius: 10px;
         }
-        /* Modal para Visualizar Documento */
-        #documentModal .modal-content {
-            background-color: #1e1e2f;
-            width: 80%;
-            max-width: 800px;
+        #imageModal.fullscreen #modalImage {
+            max-height: 100%;
         }
+        /* Modal para Visualizar Documento */
+       #documentModal .modal-content {
+    background-color: #1e1e2f;
+    width: 100%;
+    /* max-width: 800px; */
+}
         #documentModal .modal-body {
             position: relative;
             padding-top: 56.25%; /* 16:9 Aspect Ratio */
+        }
+        #documentModal.fullscreen .modal-body {
+            padding-top: 0;
+            height: calc(100% - 60px); /* Ajuste para cabecera */
         }
         #documentModal iframe {
             position: absolute;
@@ -492,6 +523,19 @@
             width: 100%;
             height: 100%;
             border: none;
+        }
+        /* Ajustes para pantalla completa */
+        .modal.fullscreen .modal-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            max-width: none;
+            margin: 0;
+            border-radius: 0;
         }
     </style>
 </head>
@@ -568,7 +612,10 @@
         <div class="modal-content video-modal-content">
             <div class="modal-header">
                 <h2>Reproduciendo Video</h2>
-                <span class="close-modal" onclick="closeVideoModal()" aria-label="Cerrar modal">&times;</span>
+                <div>
+                    <span class="maximize-modal" onclick="toggleFullscreen('videoModal')" title="Pantalla completa"><i class="fas fa-expand"></i></span>
+                    <span class="close-modal" onclick="closeVideoModal()" aria-label="Cerrar modal">&times;</span>
+                </div>
             </div>
             <div class="modal-body">
                 <!-- Video Directo -->
@@ -586,7 +633,10 @@
         <div class="modal-content image-modal-content">
             <div class="modal-header">
                 <h2>Visualizando Imagen</h2>
-                <span class="close-modal" onclick="closeImageModal()" aria-label="Cerrar modal">&times;</span>
+                <div>
+                    <span class="maximize-modal" onclick="toggleFullscreen('imageModal')" title="Pantalla completa"><i class="fas fa-expand"></i></span>
+                    <span class="close-modal" onclick="closeImageModal()" aria-label="Cerrar modal">&times;</span>
+                </div>
             </div>
             <div class="modal-body">
                 <img id="modalImage" src="" alt="Imagen">
@@ -599,7 +649,10 @@
         <div class="modal-content document-modal-content">
             <div class="modal-header">
                 <h2>Visualizando Documento</h2>
-                <span class="close-modal" onclick="closeDocumentModal()" aria-label="Cerrar modal">&times;</span>
+                <div>
+                    <span class="maximize-modal" onclick="toggleFullscreen('documentModal')" title="Pantalla completa"><i class="fas fa-expand"></i></span>
+                    <span class="close-modal" onclick="closeDocumentModal()" aria-label="Cerrar modal">&times;</span>
+                </div>
             </div>
             <div class="modal-body">
                 <iframe id="documentIframe" src="" frameborder="0"></iframe>
@@ -1454,6 +1507,7 @@
 
             videoModal.style.display = 'none';
             videoModal.setAttribute('aria-hidden', 'true');
+            videoModal.classList.remove('fullscreen');
         }
 
         // Función para obtener el tipo MIME del video basado en su extensión
@@ -1487,6 +1541,7 @@
             modalImage.src = '';
             imageModal.style.display = 'none';
             imageModal.setAttribute('aria-hidden', 'true');
+            imageModal.classList.remove('fullscreen');
         }
 
         // Función para abrir el modal de documento
@@ -1518,6 +1573,7 @@
             documentIframe.src = '';
             documentModal.style.display = 'none';
             documentModal.setAttribute('aria-hidden', 'true');
+            documentModal.classList.remove('fullscreen');
         }
 
         // Función para convertir URLs de Google Drive a URLs embebibles
@@ -1551,6 +1607,22 @@
                 }
             } catch (error) {
                 return null;
+            }
+        }
+
+        // Función para alternar pantalla completa en los modales
+        function toggleFullscreen(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.toggle('fullscreen');
+
+            // Cambiar el ícono de maximizar/restaurar
+            const maximizeIcon = modal.querySelector('.maximize-modal i');
+            if (modal.classList.contains('fullscreen')) {
+                maximizeIcon.classList.remove('fa-expand');
+                maximizeIcon.classList.add('fa-compress');
+            } else {
+                maximizeIcon.classList.remove('fa-compress');
+                maximizeIcon.classList.add('fa-expand');
             }
         }
     </script>
