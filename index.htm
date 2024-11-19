@@ -231,6 +231,34 @@
             opacity: 0;
             pointer-events: none;
         }
+        /* Botón para configuración del dashboard */
+        .settings-btn {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.3s, opacity 0.3s;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .settings-btn:hover {
+            background-color: #33334d;
+        }
+        .settings-btn i {
+            margin-right: 15px;
+            font-size: 18px;
+            color: #9a9ab0;
+        }
+        .settings-btn span {
+            font-size: 16px;
+            font-weight: 500;
+            color: #e0e0eb;
+            transition: opacity 0.3s;
+        }
+        .dashboard.collapsed .settings-btn span {
+            opacity: 0;
+            pointer-events: none;
+        }
         /* Secciones */
         .sections-container {
             flex: 1;
@@ -567,6 +595,34 @@
             margin: 0;
             border-radius: 0;
         }
+        /* Modal de Configuración */
+        #settingsModal .modal-content {
+            background-color: #2e2f45;
+            width: 80%;
+            max-width: 600px;
+        }
+        #settingsModal .modal-body {
+            padding: 20px;
+        }
+        #settingsModal .option {
+            margin-bottom: 20px;
+        }
+        #settingsModal label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        #settingsModal input[type="checkbox"] {
+            margin-right: 10px;
+        }
+        #settingsModal .import-export-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        #settingsModal .import-export-buttons button {
+            width: 48%;
+        }
     </style>
 </head>
 <body>
@@ -594,6 +650,11 @@
         <div class="add-section-btn" onclick="openAddSectionModal()" aria-label="Agregar sección">
             <i class="fas fa-plus"></i>
             <span>Agregar Sección</span>
+        </div>
+        <!-- Botón para configuración del dashboard -->
+        <div class="settings-btn" onclick="openSettingsModal()" aria-label="Configuración">
+            <i class="fas fa-cog"></i>
+            <span>Configuración</span>
         </div>
     </div>
 
@@ -693,12 +754,36 @@
         </div>
     </div>
 
+    <!-- Modal de Configuración -->
+    <div id="settingsModal" class="modal" aria-hidden="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Configuración del Dashboard</h2>
+                <span class="close-modal" onclick="closeSettingsModal()" aria-label="Cerrar modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="option">
+                    <label>
+                        <input type="checkbox" id="enableSectionDeletion">
+                        Activar eliminación de secciones
+                    </label>
+                </div>
+                <div class="import-export-buttons">
+                    <button onclick="exportDashboard()">Exportar Oficina Virtual</button>
+                    <button onclick="document.getElementById('importFileInput').click()">Restaurar Oficina Virtual</button>
+                    <input type="file" id="importFileInput" accept=".json" style="display: none;" onchange="importDashboard(event)">
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Variables globales
         let highestZ = 1;
         const gridSize = 10;
         let sectionsData = JSON.parse(localStorage.getItem('sections')) || [];
         let cardsData = JSON.parse(localStorage.getItem('cards')) || {};
+        let enableSectionDeletion = false;
 
         // Función para generar un ID único
         function generateUniqueId() {
@@ -720,7 +805,9 @@
         // Mostrar las secciones en el menú y crear sus contenedores
         function initializeSections() {
             const menu = document.getElementById('menu');
+            menu.innerHTML = ''; // Limpiar menú existente
             const sectionsContainer = document.getElementById('sections-container');
+            sectionsContainer.innerHTML = ''; // Limpiar secciones existentes
 
             sectionsData.forEach(section => {
                 // Agregar al menú
@@ -733,8 +820,8 @@
                     <span>${section.name}</span>
                 `;
 
-                // Si la sección es deletable, añadir el ícono de eliminar
-                if (section.deletable) {
+                // Si la eliminación de secciones está activada y la sección es deletable, añadir el ícono de eliminar
+                if (enableSectionDeletion && section.deletable) {
                     const deleteIcon = document.createElement('i');
                     deleteIcon.className = 'fas fa-trash-alt delete-section';
                     deleteIcon.title = 'Eliminar sección';
@@ -1430,39 +1517,8 @@
             sectionsData.push(newSection);
             localStorage.setItem('sections', JSON.stringify(sectionsData));
 
-            // Añadir al menú
-            const menu = document.getElementById('menu');
-            const menuItem = document.createElement('li');
-            menuItem.className = 'menu-item deletable';
-            menuItem.setAttribute('data-section-id', newSection.id);
-            menuItem.onclick = () => showSection(newSection.id);
-            menuItem.innerHTML = `
-                <i class="fas ${newSection.icon}"></i>
-                <span>${newSection.name}</span>
-            `;
-            // Añadir ícono de eliminar
-            const deleteIcon = document.createElement('i');
-            deleteIcon.className = 'fas fa-trash-alt delete-section';
-            deleteIcon.title = 'Eliminar sección';
-            deleteIcon.onclick = (event) => {
-                event.stopPropagation(); // Evitar que se active la selección de la sección
-                deleteSection(newSection.id);
-            };
-            menuItem.appendChild(deleteIcon);
-
-            menu.appendChild(menuItem);
-
-            // Crear la sección en el contenedor
-            const sectionsContainer = document.getElementById('sections-container');
-            const sectionDiv = document.createElement('div');
-            sectionDiv.className = 'section';
-            sectionDiv.id = newSection.id;
-            sectionDiv.setAttribute('aria-labelledby', `${newSection.id}-title`);
-            sectionDiv.innerHTML = `
-                <h2 class="section-title" id="${newSection.id}-title">${newSection.name}</h2>
-                <i class="fas fa-plus add-icon" onclick="addCard('${newSection.id}')" aria-label="Agregar tarjeta"></i>
-            `;
-            sectionsContainer.appendChild(sectionDiv);
+            // Actualizar las secciones
+            initializeSections();
 
             // Cerrar el modal
             closeAddSectionModal();
@@ -1488,6 +1544,11 @@
             const documentModal = document.getElementById('documentModal');
             if (event.target == documentModal) {
                 closeDocumentModal();
+            }
+
+            const settingsModal = document.getElementById('settingsModal');
+            if (event.target == settingsModal) {
+                closeSettingsModal();
             }
         }
 
@@ -1734,6 +1795,72 @@
             } else {
                 alert('No se pudo obtener el enlace del documento.');
             }
+        }
+
+        // Función para abrir el modal de configuración
+        function openSettingsModal() {
+            const settingsModal = document.getElementById('settingsModal');
+            const enableDeletionCheckbox = document.getElementById('enableSectionDeletion');
+            enableDeletionCheckbox.checked = enableSectionDeletion;
+            settingsModal.style.display = 'block';
+            settingsModal.setAttribute('aria-hidden', 'false');
+        }
+
+        // Función para cerrar el modal de configuración
+        function closeSettingsModal() {
+            const settingsModal = document.getElementById('settingsModal');
+            const enableDeletionCheckbox = document.getElementById('enableSectionDeletion');
+            enableSectionDeletion = enableDeletionCheckbox.checked;
+            initializeSections(); // Actualizar las secciones
+            settingsModal.style.display = 'none';
+            settingsModal.setAttribute('aria-hidden', 'true');
+        }
+
+        // Función para exportar el dashboard
+        function exportDashboard() {
+            const data = {
+                sections: sectionsData,
+                cards: cardsData
+            };
+            const dataStr = JSON.stringify(data, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'oficina_virtual.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Función para importar el dashboard
+        function importDashboard(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.sections && data.cards) {
+                        sectionsData = data.sections;
+                        cardsData = data.cards;
+                        localStorage.setItem('sections', JSON.stringify(sectionsData));
+                        localStorage.setItem('cards', JSON.stringify(cardsData));
+                        initializeSections();
+                        loadCards();
+                        alert('Oficina virtual restaurada correctamente.');
+                        closeSettingsModal();
+                    } else {
+                        alert('El archivo JSON no es válido.');
+                    }
+                } catch (error) {
+                    alert('Error al leer el archivo JSON.');
+                }
+            };
+            reader.readAsText(file);
         }
     </script>
 </body>
