@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oficina Virtual Completa con Contenedores Editables</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Estilos Generales */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+        }
+        body {
+            background-color: #1e1e2f;
+            color: #fff;
+            display: flex;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        /* Dashboard (Menú) */
+        .dashboard {
+            width: 300px;
+            background-color: #252539;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: width 0.3s;
+            position: relative;
+        }
+        .dashboard.collapsed {
+            width: 80px;
+        }
+        .toggle-menu {
+            position: absolute;
+            top: 10px;
+            right: -25px;
+            background-color: #252539;
+            border: 1px solid #3a3a4f;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #fff;
+            transition: transform 0.3s;
+        }
+        .dashboard.collapsed .toggle-menu {
+            transform: rotate(180deg);
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            transition: opacity 0.3s;
+        }
+        .dashboard.collapsed .logo {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .logo img {
+            max-width: 150px;
+            height: auto;
+        }
+        .search-bar {
+            background-color: #1e1e2f;
+            border: 1px solid #3a3a4f;
+            border-radius: 8px;
+            padding: 5px 10px;
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            transition: opacity 0.3s;
+        }
+        .dashboard.collapsed .search-bar {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .search-bar input {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            width: 100%;
+            margin-left: 5px;
+        }
+        .search-bar i {
+            color: #9a9ab0;
+            font-size: 14px;
+        }
+        .menu {
+            list-style: none;
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-right: 10px; /* Espacio para scrollbar si es necesario */
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE y Edge */
+        }
+        .menu::-webkit-scrollbar {
+            display: none; /* Chrome, Safari y Opera */
+        }
+        .menu-item {
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.3s;
+            padding: 10px;
+            border-radius: 8px;
+            position: relative;
+        }
+        .menu-item:hover {
+            background-color: #33334d;
+        }
+        .menu-item i {
+            margin-right: 15px;
+            font-size: 18px;
+            color: #9a9ab0;
+            min-width: 20px;
+            text-align: center;
+        }
+        .menu-item span {
+            font-size: 16px;
+            font-weight: 500;
+            color: #e0e0eb;
+            transition: opacity 0.3s;
+        }
+        .dashboard.collapsed .menu-item span {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .delete-section {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 14px;
+            color: #ff6b6b;
+            cursor: pointer;
+            display: none;
+        }
+        .menu-item.deletable:hover .delete-section {
+            display: block;
+        }
+        .notification {
+            font-size: 14px;
+            background-color: #2e2e49;
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: background 0.3s, opacity 0.3s;
+            margin-bottom: 20px;
+        }
+        .notification:hover {
+            background-color: #3b3b59;
+        }
+        .notification span {
+            font-size: 14px;
+            font-weight: 500;
+            color: #fff;
+            transition: opacity 0.3s;
+        }
+        .dashboard.collapsed .notification span {
+            display: none;
+        }
+        .notification i {
+            font-size: 18px;
+            color: #00d1b2;
+        }
+        .discover-more {
+            font-size: 14px;
+            font-weight: bold;
+            color: #00d1b2;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        .discover-more:hover {
+            color: #00bfa5;
+        }
+        .footer {
+            font-size: 12px;
+            cursor: pointer;
+            color: #9a9ab0;
+            text-align: center;
+            transition: opacity 0.3s;
+        }
+        .dashboard.collapsed .footer {
+            opacity: 0;
+            pointer-events: none;
+        }
+        /* Botón para agregar secciones */
+        .add-section-btn {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.3s, opacity 0.3s;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .add-section-btn:hover {
+            background-color: #33334d;
+        }
+        .add-section-btn i {
+            margin-right: 15px;
+            font-size: 18px;
+            color: #9a9ab0;
+        }
+        .add-section-btn span {
+            font-size: 16px;
+            font-weight: 500;
+            color: #e0e0eb;
+            transition: opacity 0.3s;
+        }
+        .dashboard.collapsed .add-section-btn span {
+            opacity: 0;
+            pointer-events: none;
+        }
+        /* Secciones */
+        .sections-container {
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            padding: 20px;
+            background-color: #28293d;
+            overflow-y: auto;
+            position: relative;
+        }
+        .section {
+            flex: 1 1 100%;
+            padding: 20px;
+            background-color: #28293d;
+            overflow-y: auto;
+            position: relative;
+            min-height: 200px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        .add-icon {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #00d1b2;
+        }
+        .card {
+            background-color: #2e2f45;
+            border-radius: 10px;
+            padding: 15px;
+            width: 300px;
+            color: #fff;
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            cursor: grab;
+            user-select: none;
+            transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.1s ease;
+        }
+        .card.dragging {
+            opacity: 0.8;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transform: scale(1.02);
+        }
+        .card h3, .card p {
+            margin: 5px 0;
+            user-select: none;
+        }
+        .links {
+            margin-top: 10px;
+        }
+        .editable {
+            outline: none;
+            cursor: text;
+        }
+        .footer-container {
+            margin-top: auto;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .icon {
+            cursor: pointer;
+            font-size: 18px;
+            color: #9a9ab0;
+            transition: color 0.3s;
+        }
+        .icon.active {
+            color: #00d1b2;
+        }
+        .delete-card {
+            font-size: 14px;
+            color: #ff6b6b;
+            cursor: pointer;
+            display: none;
+        }
+        .card:hover .delete-card {
+            display: block;
+        }
+        .menu-opciones {
+            display: none;
+            background-color: #3a3a4f;
+            border-radius: 5px;
+            padding: 10px;
+            position: absolute;
+            top: -60px;
+            right: 10px;
+            z-index: 1000;
+        }
+        .menu-opciones button {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+            margin-bottom: 5px;
+        }
+        .menu-opciones button:hover {
+            color: #00bfa5;
+        }
+        .link-section {
+            display: flex;
+            align-items: center;
+            margin-top: 5px;
+        }
+        .link-section img {
+            width: 16px;
+            height: 16px;
+            margin-right: 5px;
+        }
+        .link-section a {
+            color: #00bfa5;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .link-section a:hover {
+            text-decoration: underline;
+        }
+        /* Modal para Agregar Sección */
+        .modal {
+            display: none; /* Oculto por defecto */
+            position: fixed; /* Fijo en la pantalla */
+            z-index: 2000; /* Por encima de otros elementos */
+            left: 0;
+            top: 0;
+            width: 100%; /* Ancho completo */
+            height: 100%; /* Alto completo */
+            overflow: auto; /* Scroll si es necesario */
+            background-color: rgba(0, 0, 0, 0.5); /* Fondo semitransparente */
+        }
+        .modal-content {
+            background-color: #2e2f45;
+            margin: 10% auto; /* 10% desde arriba y centrado */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 300px; /* Ancho del modal */
+            border-radius: 10px;
+            color: #fff;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 {
+            margin: 0;
+        }
+        .close-modal {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close-modal:hover,
+        .close-modal:focus {
+            color: #fff;
+        }
+        .icon-selection {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .icon-option {
+            font-size: 24px;
+            cursor: pointer;
+            padding: 5px;
+            border: 2px solid transparent;
+            border-radius: 5px;
+            transition: border 0.3s, background-color 0.3s;
+        }
+        .icon-option.selected {
+            border: 2px solid #00d1b2;
+            background-color: #3a3a4f;
+        }
+        .modal-footer {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .modal-footer button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .modal-footer .cancel-btn {
+            background-color: #aaa;
+            color: #fff;
+        }
+        .modal-footer .add-btn {
+            background-color: #00d1b2;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard" id="dashboard">
+        <div class="toggle-menu" onclick="toggleDashboardMenu()" aria-label="Alternar menú">
+            <i class="fas fa-angle-double-left"></i>
+        </div>
+        <div class="logo">
+            <img src="https://www.yourlogo.com/logo.png" alt="Logotipo">
+        </div>
+        <div class="search-bar">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="¿Qué quieres aprender?">
+        </div>
+        <ul class="menu" id="menu">
+            <!-- Secciones Iniciales -->
+            <!-- Las secciones se cargarán dinámicamente -->
+        </ul>
+        <div class="notification">
+            <i class="fas fa-bell"></i>
+            <span>Hay empresas que le pagan Platzi a sus empleados 👀</span>
+        </div>
+        <div class="footer">Cuéntanos tu opinión</div>
+        <!-- Botón para agregar secciones -->
+        <div class="add-section-btn" onclick="openAddSectionModal()" aria-label="Agregar sección">
+            <i class="fas fa-plus"></i>
+            <span>Agregar Sección</span>
+        </div>
+    </div>
+
+    <!-- Secciones Dinámicas -->
+    <div class="sections-container" id="sections-container">
+        <!-- Las secciones se cargarán dinámicamente -->
+    </div>
+
+    <!-- Modal para Agregar Sección -->
+    <div id="addSectionModal" class="modal" aria-hidden="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Agregar Nueva Sección</h2>
+                <span class="close-modal" onclick="closeAddSectionModal()" aria-label="Cerrar modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <label for="sectionName">Nombre de la Sección:</label>
+                <input type="text" id="sectionName" placeholder="Ingrese el nombre" style="width:100%; padding:8px; margin-top:5px; border-radius:5px; border:1px solid #3a3a4f; background-color:#1e1e2f; color:#fff;">
+                <div style="margin-top:15px;">
+                    <label>Selecciona un Ícono:</label>
+                    <div class="icon-selection" id="iconSelection">
+                        <!-- Opciones de íconos -->
+                        <i class="fas fa-home icon-option" data-icon="fa-home"></i>
+                        <i class="fas fa-route icon-option" data-icon="fa-route"></i>
+                        <i class="fas fa-chart-line icon-option" data-icon="fa-chart-line"></i>
+                        <i class="fas fa-comments icon-option" data-icon="fa-comments"></i>
+                        <i class="fas fa-bell icon-option" data-icon="fa-bell"></i>
+                        <i class="fas fa-briefcase icon-option" data-icon="fa-briefcase"></i>
+                        <i class="fas fa-calendar icon-option" data-icon="fa-calendar"></i>
+                        <i class="fas fa-book icon-option" data-icon="fa-book"></i>
+                        <i class="fas fa-cog icon-option" data-icon="fa-cog"></i>
+                        <i class="fas fa-user icon-option" data-icon="fa-user"></i>
+                        <!-- Agrega más íconos según sea necesario -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="cancel-btn" onclick="closeAddSectionModal()">Cancelar</button>
+                <button class="add-btn" onclick="addNewSection()">Agregar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let highestZ = 1;
+        const gridSize = 10; // Tamaño de la cuadrícula en píxeles (reducido para mayor fluidez)
+        let sectionsData = JSON.parse(localStorage.getItem('sections')) || [];
+        let cardsData = JSON.parse(localStorage.getItem('cards')) || {};
+
+        // Predefinir las secciones iniciales si no existen
+        if (sectionsData.length === 0) {
+            sectionsData = [
+                { id: 'inicio', name: 'Inicio', icon: 'fa-home', deletable: false },
+                { id: 'rutas', name: 'Mis Rutas', icon: 'fa-route', deletable: false },
+                { id: 'progreso', name: 'Mi Progreso', icon: 'fa-chart-line', deletable: false },
+                { id: 'chat', name: 'Chat ADA', icon: 'fa-comments', deletable: false },
+                { id: 'notificaciones', name: 'Notificaciones', icon: 'fa-bell', deletable: false }
+            ];
+            localStorage.setItem('sections', JSON.stringify(sectionsData));
+        }
+
+        // Mostrar las secciones en el menú y crear sus contenedores
+        function initializeSections() {
+            const menu = document.getElementById('menu');
+            const sectionsContainer = document.getElementById('sections-container');
+
+            sectionsData.forEach(section => {
+                // Agregar al menú
+                const menuItem = document.createElement('li');
+                menuItem.className = 'menu-item';
+                menuItem.setAttribute('data-section-id', section.id);
+                menuItem.onclick = () => showSection(section.id);
+                menuItem.innerHTML = `
+                    <i class="fas ${section.icon}"></i>
+                    <span>${section.name}</span>
+                `;
+
+                // Si la sección es deletable, añadir el ícono de eliminar
+                if (section.deletable) {
+                    const deleteIcon = document.createElement('i');
+                    deleteIcon.className = 'fas fa-trash-alt delete-section';
+                    deleteIcon.title = 'Eliminar sección';
+                    deleteIcon.onclick = (event) => {
+                        event.stopPropagation(); // Evitar que se active la selección de la sección
+                        deleteSection(section.id);
+                    };
+                    menuItem.appendChild(deleteIcon);
+                }
+
+                menu.appendChild(menuItem);
+
+                // Crear la sección en el contenedor
+                const sectionDiv = document.createElement('div');
+                sectionDiv.className = 'section';
+                sectionDiv.id = section.id;
+                sectionDiv.setAttribute('aria-labelledby', `${section.id}-title`);
+                sectionDiv.innerHTML = `
+                    <h2 class="section-title" id="${section.id}-title">${section.name}</h2>
+                    <i class="fas fa-plus add-icon" onclick="addCard('${section.id}')" aria-label="Agregar tarjeta"></i>
+                `;
+                sectionsContainer.appendChild(sectionDiv);
+            });
+        }
+
+        // Mostrar la sección seleccionada
+        function showSection(sectionId) {
+            const sections = document.querySelectorAll('.section');
+            sections.forEach(section => section.style.display = 'none');
+            document.getElementById(sectionId).style.display = 'block';
+        }
+
+        // Inicializar las secciones al cargar
+        initializeSections();
+        showSection(sectionsData[0].id); // Mostrar la primera sección por defecto
+
+        // Cargar tarjetas guardadas al inicio
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCards();
+        });
+
+        // Función para cargar tarjetas desde localStorage
+        function loadCards() {
+            sectionsData.forEach(section => {
+                const savedCards = cardsData[section.id] || [];
+                savedCards.forEach(savedCard => {
+                    createCard(section.id, savedCard.title, savedCard.description, savedCard.left, savedCard.top, savedCard.links);
+                });
+            });
+        }
+
+        // Función para agregar una nueva tarjeta
+        function addCard(sectionId) {
+            const cardTitle = prompt("Ingrese el nombre del contenedor:");
+            if (!cardTitle) return;
+
+            createCard(sectionId, cardTitle, "Descripción del contenedor.", "10px", "10px", "");
+            saveCards();
+        }
+
+        // Función para crear una tarjeta
+        function createCard(sectionId, title, description, left, top, linksHTML) {
+            const section = document.getElementById(sectionId);
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.setAttribute('tabindex', '0');
+            card.setAttribute('aria-grabbed', 'false');
+            card.innerHTML = `
+                <h3 class="editable" contenteditable="false">${title}</h3>
+                <p class="editable" contenteditable="false">${description}</p>
+                <div class="links">${linksHTML}</div>
+                <div class="footer-container">
+                    <i class="fas fa-pen icon" onclick="toggleEdit(this)" aria-label="Editar tarjeta"></i>
+                    <i class="fas fa-plus icon" onclick="toggleCardMenu(this)" aria-label="Agregar opción"></i>
+                    <i class="fas fa-trash-alt delete-card" onclick="deleteCard(this)" aria-label="Eliminar tarjeta"></i>
+                </div>
+                <div class="menu-opciones">
+                    <button onclick="addLink(this)">Agregar Enlace</button>
+                </div>
+            `;
+            card.style.left = left;
+            card.style.top = top;
+            section.appendChild(card);
+
+            // Añadir eventos de arrastre
+            makeDraggable(card, section);
+        }
+
+        // Función para hacer una tarjeta arrastrable
+        function makeDraggable(card, section) {
+            let offsetX, offsetY;
+            let isDragging = false;
+            let animationFrameId;
+            let currentX = parseInt(card.style.left, 10) || 0;
+            let currentY = parseInt(card.style.top, 10) || 0;
+
+            // Evitar que los clics en iconos inicien el arrastre
+            const icons = card.querySelectorAll('.icon');
+            icons.forEach(icon => {
+                icon.addEventListener('mousedown', (event) => {
+                    event.stopPropagation();
+                });
+                icon.addEventListener('touchstart', (event) => {
+                    event.stopPropagation();
+                });
+            });
+
+            // Eventos de mouse
+            card.addEventListener('mousedown', (event) => {
+                isDragging = true;
+                offsetX = event.clientX - card.getBoundingClientRect().left;
+                offsetY = event.clientY - card.getBoundingClientRect().top;
+                card.style.cursor = 'grabbing';
+                card.classList.add('dragging');
+                highestZ += 1;
+                card.style.zIndex = highestZ;
+                card.setAttribute('aria-grabbed', 'true');
+
+                document.addEventListener('mousemove', moveCard);
+                document.addEventListener('mouseup', stopDragging);
+
+                event.preventDefault(); // Evita la selección de texto al arrastrar
+            });
+
+            // Eventos táctiles
+            card.addEventListener('touchstart', (event) => {
+                isDragging = true;
+                const touch = event.touches[0];
+                offsetX = touch.clientX - card.getBoundingClientRect().left;
+                offsetY = touch.clientY - card.getBoundingClientRect().top;
+                card.style.cursor = 'grabbing';
+                card.classList.add('dragging');
+                highestZ += 1;
+                card.style.zIndex = highestZ;
+                card.setAttribute('aria-grabbed', 'true');
+
+                document.addEventListener('touchmove', moveCardTouch, { passive: false });
+                document.addEventListener('touchend', stopDraggingTouch);
+
+                event.preventDefault();
+            });
+
+            // Función para mover la tarjeta con mouse
+            function moveCard(event) {
+                if (!isDragging) return;
+                currentX = event.clientX - offsetX - section.getBoundingClientRect().left;
+                currentY = event.clientY - offsetY - section.getBoundingClientRect().top;
+
+                // Snapping a la cuadrícula
+                currentX = Math.round(currentX / gridSize) * gridSize;
+                currentY = Math.round(currentY / gridSize) * gridSize;
+
+                // Limitar dentro del contenedor
+                const relativeWidth = section.clientWidth;
+                const relativeHeight = section.clientHeight;
+
+                currentX = Math.max(0, Math.min(currentX, relativeWidth - card.offsetWidth));
+                currentY = Math.max(0, Math.min(currentY, relativeHeight - card.offsetHeight));
+
+                // Usar requestAnimationFrame para optimizar
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                }
+                animationFrameId = requestAnimationFrame(() => {
+                    card.style.left = `${currentX}px`;
+                    card.style.top = `${currentY}px`;
+                });
+            }
+
+            // Función para mover la tarjeta con touch
+            function moveCardTouch(event) {
+                if (!isDragging) return;
+                const touch = event.touches[0];
+                currentX = touch.clientX - offsetX - section.getBoundingClientRect().left;
+                currentY = touch.clientY - offsetY - section.getBoundingClientRect().top;
+
+                // Snapping a la cuadrícula
+                currentX = Math.round(currentX / gridSize) * gridSize;
+                currentY = Math.round(currentY / gridSize) * gridSize;
+
+                // Limitar dentro del contenedor
+                const relativeWidth = section.clientWidth;
+                const relativeHeight = section.clientHeight;
+
+                currentX = Math.max(0, Math.min(currentX, relativeWidth - card.offsetWidth));
+                currentY = Math.max(0, Math.min(currentY, relativeHeight - card.offsetHeight));
+
+                // Usar requestAnimationFrame para optimizar
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                }
+                animationFrameId = requestAnimationFrame(() => {
+                    card.style.left = `${currentX}px`;
+                    card.style.top = `${currentY}px`;
+                });
+
+                event.preventDefault();
+            }
+
+            // Función para detener el arrastre con mouse
+            function stopDragging(event) {
+                if (!isDragging) return;
+                isDragging = false;
+                card.style.cursor = 'grab';
+                card.classList.remove('dragging');
+                card.setAttribute('aria-grabbed', 'false');
+
+                document.removeEventListener('mousemove', moveCard);
+                document.removeEventListener('mouseup', stopDragging);
+
+                cancelAnimationFrame(animationFrameId);
+                saveCards();
+            }
+
+            // Función para detener el arrastre con touch
+            function stopDraggingTouch(event) {
+                if (!isDragging) return;
+                isDragging = false;
+                card.style.cursor = 'grab';
+                card.classList.remove('dragging');
+                card.setAttribute('aria-grabbed', 'false');
+
+                document.removeEventListener('touchmove', moveCardTouch);
+                document.removeEventListener('touchend', stopDraggingTouch);
+
+                cancelAnimationFrame(animationFrameId);
+                saveCards();
+            }
+
+            // Accesibilidad: permitir arrastrar con teclado
+            card.addEventListener('keydown', (event) => {
+                const step = gridSize; // Paso de movimiento con teclado
+                switch(event.key) {
+                    case 'ArrowUp':
+                        event.preventDefault();
+                        currentY = Math.max(currentY - step, 0);
+                        card.style.top = `${currentY}px`;
+                        saveCards();
+                        break;
+                    case 'ArrowDown':
+                        event.preventDefault();
+                        currentY = Math.min(currentY + step, section.clientHeight - card.offsetHeight);
+                        card.style.top = `${currentY}px`;
+                        saveCards();
+                        break;
+                    case 'ArrowLeft':
+                        event.preventDefault();
+                        currentX = Math.max(currentX - step, 0);
+                        card.style.left = `${currentX}px`;
+                        saveCards();
+                        break;
+                    case 'ArrowRight':
+                        event.preventDefault();
+                        currentX = Math.min(currentX + step, section.clientWidth - card.offsetWidth);
+                        card.style.left = `${currentX}px`;
+                        saveCards();
+                        break;
+                    case 'Enter':
+                        event.preventDefault();
+                        // Iniciar edición al presionar Enter
+                        toggleEdit(card.querySelector('.icon.fa-pen'));
+                        break;
+                }
+            });
+        }
+
+        // Función para alternar el menú principal
+        function toggleDashboardMenu() {
+            const dashboard = document.getElementById('dashboard');
+            const toggleBtnIcon = dashboard.querySelector('.toggle-menu i');
+            dashboard.classList.toggle('collapsed');
+            if (dashboard.classList.contains('collapsed')) {
+                toggleBtnIcon.classList.remove('fa-angle-double-left');
+                toggleBtnIcon.classList.add('fa-angle-double-right');
+            } else {
+                toggleBtnIcon.classList.remove('fa-angle-double-right');
+                toggleBtnIcon.classList.add('fa-angle-double-left');
+            }
+        }
+
+        // Función para alternar el menú de opciones en las tarjetas
+        function toggleCardMenu(icon) {
+            const menu = icon.parentElement.nextElementSibling;
+            const isActive = menu.style.display === 'block';
+            menu.style.display = isActive ? 'none' : 'block';
+            icon.classList.toggle('active', !isActive);
+        }
+
+        // Función para agregar un enlace a una tarjeta
+        function addLink(button) {
+            const linkUrl = prompt("Ingrese la URL del enlace:");
+            const linkName = prompt("Ingrese el nombre del enlace:");
+            if (!linkUrl || !linkName) return;
+
+            try {
+                const hostname = new URL(linkUrl).hostname;
+                const faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}`;
+                const linkSection = document.createElement('div');
+                linkSection.className = 'link-section';
+
+                linkSection.innerHTML = `
+                    <img src="${faviconUrl}" alt="Favicon">
+                    <a href="${linkUrl}" target="_blank" class="editable-link">${linkName}</a>
+                `;
+
+                const linksContainer = button.closest('.card').querySelector('.links');
+                linksContainer.appendChild(linkSection);
+                saveCards();
+            } catch (error) {
+                alert("URL inválida. Por favor, ingrese una URL válida.");
+            }
+        }
+
+        // Función para alternar la edición de una tarjeta
+        function toggleEdit(icon) {
+            const card = icon.closest('.card');
+            const elements = card.querySelectorAll('.editable');
+            const isActive = icon.classList.contains('active');
+
+            elements.forEach(element => {
+                element.contentEditable = !isActive;
+                if (!isActive) element.focus();
+            });
+
+            icon.classList.toggle('active', !isActive);
+            saveCards();
+        }
+
+        // Función para eliminar una tarjeta
+        function deleteCard(icon) {
+            const card = icon.closest('.card');
+            const sectionId = card.parentElement.id;
+            const cardIndex = Array.from(card.parentElement.querySelectorAll('.card')).indexOf(card);
+
+            if (confirm("¿Estás seguro de que deseas eliminar esta tarjeta?")) {
+                // Eliminar la tarjeta del DOM
+                card.remove();
+
+                // Eliminar la tarjeta de cardsData
+                if (cardsData[sectionId]) {
+                    cardsData[sectionId].splice(cardIndex, 1);
+                    if (cardsData[sectionId].length === 0) {
+                        delete cardsData[sectionId];
+                    }
+                    saveCards();
+                }
+            }
+        }
+
+        // Función para eliminar una sección
+        function deleteSection(sectionId) {
+            if (confirm("¿Estás seguro de que deseas eliminar esta sección? Todas las tarjetas asociadas también serán eliminadas.")) {
+                // Eliminar la sección del DOM
+                const sectionDiv = document.getElementById(sectionId);
+                sectionDiv.remove();
+
+                // Eliminar la sección del menú
+                const menu = document.getElementById('menu');
+                const menuItems = menu.querySelectorAll('.menu-item');
+                menuItems.forEach(menuItem => {
+                    if (menuItem.getAttribute('data-section-id') === sectionId) {
+                        menuItem.remove();
+                    }
+                });
+
+                // Eliminar la sección de sectionsData
+                sectionsData = sectionsData.filter(section => section.id !== sectionId);
+                localStorage.setItem('sections', JSON.stringify(sectionsData));
+
+                // Eliminar las tarjetas asociadas de cardsData
+                if (cardsData[sectionId]) {
+                    delete cardsData[sectionId];
+                    saveCards();
+                }
+            }
+        }
+
+        // Función para guardar el estado de las tarjetas y secciones en localStorage
+        function saveCards() {
+            localStorage.setItem('cards', JSON.stringify(cardsData));
+        }
+
+        // Función para abrir el modal de agregar sección
+        function openAddSectionModal() {
+            document.getElementById('addSectionModal').style.display = 'block';
+            document.getElementById('addSectionModal').setAttribute('aria-hidden', 'false');
+        }
+
+        // Función para cerrar el modal de agregar sección
+        function closeAddSectionModal() {
+            document.getElementById('addSectionModal').style.display = 'none';
+            document.getElementById('addSectionModal').setAttribute('aria-hidden', 'true');
+            document.getElementById('sectionName').value = '';
+            const icons = document.querySelectorAll('.icon-option');
+            icons.forEach(icon => icon.classList.remove('selected'));
+        }
+
+        // Función para seleccionar un ícono en el modal
+        function selectIcon(event) {
+            const selectedIcon = event.target;
+            if (selectedIcon.classList.contains('icon-option')) {
+                // Desmarcar otros íconos
+                document.querySelectorAll('.icon-option').forEach(icon => icon.classList.remove('selected'));
+                // Marcar el ícono seleccionado
+                selectedIcon.classList.add('selected');
+            }
+        }
+
+        // Agregar evento de clic a las opciones de íconos
+        document.getElementById('iconSelection').addEventListener('click', selectIcon);
+
+        // Función para agregar una nueva sección
+        function addNewSection() {
+            const sectionNameInput = document.getElementById('sectionName');
+            const sectionName = sectionNameInput.value.trim();
+            if (!sectionName) {
+                alert("Por favor, ingrese el nombre de la sección.");
+                return;
+            }
+
+            const selectedIconElement = document.querySelector('.icon-option.selected');
+            if (!selectedIconElement) {
+                alert("Por favor, seleccione un ícono para la sección.");
+                return;
+            }
+            const iconClass = selectedIconElement.getAttribute('data-icon');
+
+            // Crear un ID único para la nueva sección
+            const newSectionId = sectionName.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now();
+
+            // Añadir la nueva sección a las seccionesData
+            const newSection = { id: newSectionId, name: sectionName, icon: iconClass, deletable: true };
+            sectionsData.push(newSection);
+            localStorage.setItem('sections', JSON.stringify(sectionsData));
+
+            // Añadir al menú
+            const menu = document.getElementById('menu');
+            const menuItem = document.createElement('li');
+            menuItem.className = 'menu-item deletable';
+            menuItem.setAttribute('data-section-id', newSection.id);
+            menuItem.onclick = () => showSection(newSection.id);
+            menuItem.innerHTML = `
+                <i class="fas ${newSection.icon}"></i>
+                <span>${newSection.name}</span>
+            `;
+            // Añadir ícono de eliminar
+            const deleteIcon = document.createElement('i');
+            deleteIcon.className = 'fas fa-trash-alt delete-section';
+            deleteIcon.title = 'Eliminar sección';
+            deleteIcon.onclick = (event) => {
+                event.stopPropagation(); // Evitar que se active la selección de la sección
+                deleteSection(newSection.id);
+            };
+            menuItem.appendChild(deleteIcon);
+
+            menu.appendChild(menuItem);
+
+            // Crear la sección en el contenedor
+            const sectionsContainer = document.getElementById('sections-container');
+            const sectionDiv = document.createElement('div');
+            sectionDiv.className = 'section';
+            sectionDiv.id = newSection.id;
+            sectionDiv.setAttribute('aria-labelledby', `${newSection.id}-title`);
+            sectionDiv.innerHTML = `
+                <h2 class="section-title" id="${newSection.id}-title">${newSection.name}</h2>
+                <i class="fas fa-plus add-icon" onclick="addCard('${newSection.id}')" aria-label="Agregar tarjeta"></i>
+            `;
+            sectionsContainer.appendChild(sectionDiv);
+
+            // Cerrar el modal
+            closeAddSectionModal();
+        }
+
+        // Cerrar el modal al hacer clic fuera del contenido
+        window.onclick = function(event) {
+            const modal = document.getElementById('addSectionModal');
+            if (event.target == modal) {
+                closeAddSectionModal();
+            }
+        }
+
+        // Cerrar menús de opciones al hacer clic fuera
+        document.addEventListener('click', (event) => {
+            if (!event.target.closest('.menu-opciones') && !event.target.closest('.icon.fa-plus') && !event.target.closest('.icon.fa-trash-alt')) {
+                document.querySelectorAll('.menu-opciones').forEach(menu => {
+                    menu.style.display = 'none';
+                });
+                document.querySelectorAll('.icon.fa-plus').forEach(icon => {
+                    icon.classList.remove('active');
+                });
+            }
+        });
+    </script>
+</body>
+</html>
