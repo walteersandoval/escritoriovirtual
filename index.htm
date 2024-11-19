@@ -499,9 +499,14 @@
     <script>
         // Variables globales
         let highestZ = 1;
-        const gridSize = 10; // Tamaño de la cuadrícula en píxeles (reducido para mayor fluidez)
+        const gridSize = 10;
         let sectionsData = JSON.parse(localStorage.getItem('sections')) || [];
         let cardsData = JSON.parse(localStorage.getItem('cards')) || {};
+
+        // Función para generar un ID único
+        function generateUniqueId() {
+            return 'card-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+        }
 
         // Predefinir las secciones iniciales si no existen
         if (sectionsData.length === 0) {
@@ -579,7 +584,7 @@
             sectionsData.forEach(section => {
                 const savedCards = cardsData[section.id] || [];
                 savedCards.forEach(savedCard => {
-                    createCard(section.id, savedCard.title, savedCard.description, savedCard.left, savedCard.top, savedCard.links);
+                    createCard(section.id, savedCard);
                 });
             });
         }
@@ -589,21 +594,39 @@
             const cardTitle = prompt("Ingrese el nombre del contenedor:");
             if (!cardTitle) return;
 
-            createCard(sectionId, cardTitle, "Descripción del contenedor.", "10px", "10px", "");
+            const uniqueId = generateUniqueId();
+            const newCard = {
+                id: uniqueId,
+                title: cardTitle,
+                description: "Descripción del contenedor.",
+                left: "10px",
+                top: "10px",
+                links: ""
+            };
+
+            // Agregar la tarjeta al cardsData
+            if (!cardsData[sectionId]) {
+                cardsData[sectionId] = [];
+            }
+            cardsData[sectionId].push(newCard);
             saveCards();
+
+            // Crear la tarjeta en el DOM
+            createCard(sectionId, newCard);
         }
 
         // Función para crear una tarjeta
-        function createCard(sectionId, title, description, left, top, linksHTML) {
+        function createCard(sectionId, cardData) {
             const section = document.getElementById(sectionId);
             const card = document.createElement('div');
             card.className = 'card';
             card.setAttribute('tabindex', '0');
             card.setAttribute('aria-grabbed', 'false');
+            card.setAttribute('data-card-id', cardData.id); // Asignar ID único
             card.innerHTML = `
-                <h3 class="editable" contenteditable="false">${title}</h3>
-                <p class="editable" contenteditable="false">${description}</p>
-                <div class="links">${linksHTML}</div>
+                <h3 class="editable" contenteditable="false">${cardData.title}</h3>
+                <p class="editable" contenteditable="false">${cardData.description}</p>
+                <div class="links">${cardData.links}</div>
                 <div class="footer-container">
                     <i class="fas fa-pen icon" onclick="toggleEdit(this)" aria-label="Editar tarjeta"></i>
                     <i class="fas fa-plus icon" onclick="toggleCardMenu(this)" aria-label="Agregar opción"></i>
@@ -613,12 +636,56 @@
                     <button onclick="addLink(this)">Agregar Enlace</button>
                 </div>
             `;
-            card.style.left = left;
-            card.style.top = top;
+            card.style.left = cardData.left;
+            card.style.top = cardData.top;
             section.appendChild(card);
 
             // Añadir eventos de arrastre
             makeDraggable(card, section);
+
+            // Habilitar edición en título y descripción
+            enableCardEditing(card, sectionId, cardData.id);
+        }
+
+        // Función para habilitar la edición de tarjetas
+        function enableCardEditing(card, sectionId, cardId) {
+            const editableElements = card.querySelectorAll('.editable');
+
+            editableElements.forEach(element => {
+                element.addEventListener('blur', () => {
+                    const newValue = element.textContent.trim();
+                    if (element.tagName.toLowerCase() === 'h3') {
+                        updateCardData(sectionId, cardId, 'title', newValue);
+                    } else if (element.tagName.toLowerCase() === 'p') {
+                        updateCardData(sectionId, cardId, 'description', newValue);
+                    }
+                });
+
+                // Permitir la edición al hacer doble clic
+                element.addEventListener('dblclick', () => {
+                    element.contentEditable = true;
+                    element.focus();
+                });
+
+                // Deshabilitar la edición al perder el foco
+                element.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        element.contentEditable = false;
+                    }
+                });
+            });
+        }
+
+        function updateCardData(sectionId, cardId, field, value) {
+            const sectionCards = cardsData[sectionId];
+            if (sectionCards) {
+                const card = sectionCards.find(c => c.id === cardId);
+                if (card) {
+                    card[field] = value;
+                    saveCards();
+                }
+            }
         }
 
         // Función para hacer una tarjeta arrastrable
@@ -744,6 +811,11 @@
                 document.removeEventListener('mouseup', stopDragging);
 
                 cancelAnimationFrame(animationFrameId);
+                
+                // Actualizar posición en cardsData
+                const cardId = card.getAttribute('data-card-id');
+                updateCardPosition(section.id, cardId, currentX + 'px', currentY + 'px');
+                
                 saveCards();
             }
 
@@ -759,6 +831,11 @@
                 document.removeEventListener('touchend', stopDraggingTouch);
 
                 cancelAnimationFrame(animationFrameId);
+                
+                // Actualizar posición en cardsData
+                const cardId = card.getAttribute('data-card-id');
+                updateCardPosition(section.id, cardId, currentX + 'px', currentY + 'px');
+                
                 saveCards();
             }
 
@@ -770,24 +847,28 @@
                         event.preventDefault();
                         currentY = Math.max(currentY - step, 0);
                         card.style.top = `${currentY}px`;
+                        updateCardPosition(section.id, card.getAttribute('data-card-id'), `${currentX}px`, `${currentY}px`);
                         saveCards();
                         break;
                     case 'ArrowDown':
                         event.preventDefault();
                         currentY = Math.min(currentY + step, section.clientHeight - card.offsetHeight);
                         card.style.top = `${currentY}px`;
+                        updateCardPosition(section.id, card.getAttribute('data-card-id'), `${currentX}px`, `${currentY}px`);
                         saveCards();
                         break;
                     case 'ArrowLeft':
                         event.preventDefault();
                         currentX = Math.max(currentX - step, 0);
                         card.style.left = `${currentX}px`;
+                        updateCardPosition(section.id, card.getAttribute('data-card-id'), `${currentX}px`, `${currentY}px`);
                         saveCards();
                         break;
                     case 'ArrowRight':
                         event.preventDefault();
                         currentX = Math.min(currentX + step, section.clientWidth - card.offsetWidth);
                         card.style.left = `${currentX}px`;
+                        updateCardPosition(section.id, card.getAttribute('data-card-id'), `${currentX}px`, `${currentY}px`);
                         saveCards();
                         break;
                     case 'Enter':
@@ -797,6 +878,18 @@
                         break;
                 }
             });
+        }
+
+        // Función para actualizar la posición de una tarjeta en cardsData
+        function updateCardPosition(sectionId, cardId, left, top) {
+            const sectionCards = cardsData[sectionId];
+            if (sectionCards) {
+                const card = sectionCards.find(c => c.id === cardId);
+                if (card) {
+                    card.left = left;
+                    card.top = top;
+                }
+            }
         }
 
         // Función para alternar el menú principal
@@ -840,9 +933,25 @@
 
                 const linksContainer = button.closest('.card').querySelector('.links');
                 linksContainer.appendChild(linkSection);
-                saveCards();
+                saveLinkData(button.closest('.card'));
+
             } catch (error) {
                 alert("URL inválida. Por favor, ingrese una URL válida.");
+            }
+        }
+
+        function saveLinkData(card) {
+            const sectionId = card.parentElement.id;
+            const cardId = card.getAttribute('data-card-id');
+            const linksHTML = card.querySelector('.links').innerHTML;
+
+            const sectionCards = cardsData[sectionId];
+            if (sectionCards) {
+                const cardData = sectionCards.find(c => c.id === cardId);
+                if (cardData) {
+                    cardData.links = linksHTML;
+                    saveCards();
+                }
             }
         }
 
@@ -865,7 +974,7 @@
         function deleteCard(icon) {
             const card = icon.closest('.card');
             const sectionId = card.parentElement.id;
-            const cardIndex = Array.from(card.parentElement.querySelectorAll('.card')).indexOf(card);
+            const cardId = card.getAttribute('data-card-id');
 
             if (confirm("¿Estás seguro de que deseas eliminar esta tarjeta?")) {
                 // Eliminar la tarjeta del DOM
@@ -873,11 +982,14 @@
 
                 // Eliminar la tarjeta de cardsData
                 if (cardsData[sectionId]) {
-                    cardsData[sectionId].splice(cardIndex, 1);
-                    if (cardsData[sectionId].length === 0) {
-                        delete cardsData[sectionId];
+                    const cardIndex = cardsData[sectionId].findIndex(c => c.id === cardId);
+                    if (cardIndex !== -1) {
+                        cardsData[sectionId].splice(cardIndex, 1);
+                        if (cardsData[sectionId].length === 0) {
+                            delete cardsData[sectionId];
+                        }
+                        saveCards();
                     }
-                    saveCards();
                 }
             }
         }
