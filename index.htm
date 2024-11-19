@@ -350,6 +350,14 @@
         .link-section a:hover {
             text-decoration: underline;
         }
+        .image-link-thumbnail {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            cursor: pointer;
+            margin-right: 10px;
+            border-radius: 5px;
+        }
         /* Modal para Agregar Sección */
         .modal {
             display: none; /* Oculto por defecto */
@@ -371,7 +379,7 @@
             border-radius: 10px;
             color: #fff;
         }
-        .video-modal-content {
+        .video-modal-content, .image-modal-content {
             width: 80%;
             max-width: 800px;
         }
@@ -451,6 +459,21 @@
             left: 0;
             width: 100%;
             height: 100%;
+        }
+        /* Modal para Visualizar Imagen */
+        #imageModal .modal-content {
+            background-color: #1e1e2f;
+            width: 80%;
+            max-width: 800px;
+        }
+        #imageModal .modal-body {
+            text-align: center;
+            padding: 20px;
+        }
+        #modalImage {
+            max-width: 100%;
+            max-height: 80vh;
+            border-radius: 10px;
         }
     </style>
 </head>
@@ -540,6 +563,19 @@
         </div>
     </div>
 
+    <!-- Modal para Visualizar Imagen -->
+    <div id="imageModal" class="modal" aria-hidden="true">
+        <div class="modal-content image-modal-content">
+            <div class="modal-header">
+                <h2>Visualizando Imagen</h2>
+                <span class="close-modal" onclick="closeImageModal()" aria-label="Cerrar modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <img id="modalImage" src="" alt="Imagen">
+            </div>
+        </div>
+    </div>
+
     <script>
         // Variables globales
         let highestZ = 1;
@@ -621,7 +657,7 @@
         // Cargar tarjetas guardadas al inicio
         document.addEventListener('DOMContentLoaded', () => {
             loadCards();
-            // Agregar evento delegación para enlaces de video
+            // Agregar evento delegación para enlaces de video e imagen
             document.body.addEventListener('click', handleLinkClick);
         });
 
@@ -973,9 +1009,11 @@
                 const extension = pathname.split('.').pop();
                 const videoExtensions = ['mp4', 'webm', 'ogg'];
                 const videoPlatforms = ['youtube.com', 'youtu.be', 'vimeo.com'];
+                const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'];
 
                 let isVideo = false;
                 let videoType = ''; // 'direct' o 'youtube'
+                let isImage = false;
 
                 // Verificar si el hostname termina con alguna de las plataformas de video
                 if (videoExtensions.includes(extension)) {
@@ -984,6 +1022,8 @@
                 } else if (videoPlatforms.some(platform => hostname === platform || hostname.endsWith('.' + platform))) {
                     isVideo = true;
                     videoType = 'youtube';
+                } else if (imageExtensions.includes(extension)) {
+                    isImage = true;
                 }
 
                 let faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}`;
@@ -1021,6 +1061,14 @@
                             `;
                         }
                     }
+                } else if (isImage) {
+                    // Para enlaces de imágenes
+                    linkSection = document.createElement('div');
+                    linkSection.className = 'link-section';
+                    linkSection.innerHTML = `
+                        <img src="${linkUrl}" alt="${linkName}" class="image-link-thumbnail" data-image-url="${linkUrl}">
+                        <a href="#" class="editable-link image-link" data-image-url="${linkUrl}">${linkName}</a>
+                    `;
                 } else {
                     // Enlaces normales
                     linkSection = document.createElement('div');
@@ -1230,6 +1278,11 @@
             if (event.target == videoModal) {
                 closeVideoModal();
             }
+
+            const imageModal = document.getElementById('imageModal');
+            if (event.target == imageModal) {
+                closeImageModal();
+            }
         }
 
         // Cerrar menús de opciones al hacer clic fuera
@@ -1244,22 +1297,36 @@
             }
         });
 
-        // --- Nuevas Funcionalidades para Video ---
-
         // Función para manejar clics en enlaces
         function handleLinkClick(event) {
-            const link = event.target.closest('a.video-link');
-            if (link) {
-                console.log('Enlace de video detectado:', link); // Para depuración
+            const videoLink = event.target.closest('a.video-link');
+            if (videoLink) {
+                console.log('Enlace de video detectado:', videoLink); // Para depuración
                 event.preventDefault();
-                const videoType = link.getAttribute('data-video-type');
+                const videoType = videoLink.getAttribute('data-video-type');
                 if (videoType === 'direct') {
-                    const videoUrl = link.getAttribute('data-video-url');
+                    const videoUrl = videoLink.getAttribute('data-video-url');
                     openVideoModal('direct', videoUrl);
                 } else if (videoType === 'youtube') {
-                    const videoId = link.getAttribute('data-video-id');
+                    const videoId = videoLink.getAttribute('data-video-id');
                     openVideoModal('youtube', videoId);
                 }
+            }
+
+            const imageLink = event.target.closest('a.image-link');
+            if (imageLink) {
+                console.log('Enlace de imagen detectado:', imageLink); // Para depuración
+                event.preventDefault();
+                const imageUrl = imageLink.getAttribute('data-image-url');
+                openImageModal(imageUrl);
+            }
+
+            const imageThumbnail = event.target.closest('img.image-link-thumbnail');
+            if (imageThumbnail) {
+                console.log('Thumbnail de imagen detectado:', imageThumbnail); // Para depuración
+                event.preventDefault();
+                const imageUrl = imageThumbnail.getAttribute('data-image-url');
+                openImageModal(imageUrl);
             }
         }
 
@@ -1337,6 +1404,24 @@
                 default:
                     return 'video/mp4'; // Valor por defecto
             }
+        }
+
+        // Función para abrir el modal de imagen
+        function openImageModal(imageUrl) {
+            const imageModal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            modalImage.src = imageUrl;
+            imageModal.style.display = 'block';
+            imageModal.setAttribute('aria-hidden', 'false');
+        }
+
+        // Función para cerrar el modal de imagen
+        function closeImageModal() {
+            const imageModal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            modalImage.src = '';
+            imageModal.style.display = 'none';
+            imageModal.setAttribute('aria-hidden', 'true');
         }
     </script>
 </body>
