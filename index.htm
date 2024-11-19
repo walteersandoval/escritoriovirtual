@@ -4,7 +4,7 @@
     <!-- Metadatos -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Oficina Virtual con Enlaces Estilizados</title>
+    <title>Oficina Virtual</title>
     <!-- Importar Font Awesome para los íconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Importar la fuente Montserrat desde Google Fonts -->
@@ -1200,7 +1200,7 @@
                     `;
                     linkSection.onclick = () => openDocumentModal(linkUrl, isGoogleDrive);
                 } else {
-                    // Enlaces normales
+                    // Enlaces normales que se abren en una pestaña externa
                     linkSection = document.createElement('div');
                     linkSection.className = 'link-section';
                     linkSection.innerHTML = `
