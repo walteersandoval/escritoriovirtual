@@ -150,7 +150,8 @@
             cursor: pointer;
             display: none;
         }
-        .menu-item.deletable:hover .delete-section {
+        /* Mostrar ícono de eliminar cuando la eliminación está activada */
+        .enable-section-deletion .menu-item.deletable .delete-section {
             display: block;
         }
         .notification {
@@ -820,8 +821,9 @@
                     <span>${section.name}</span>
                 `;
 
-                // Si la eliminación de secciones está activada y la sección es deletable, añadir el ícono de eliminar
-                if (enableSectionDeletion && section.deletable) {
+                if (section.deletable) {
+                    menuItem.classList.add('deletable');
+                    // Añadir ícono de eliminar siempre
                     const deleteIcon = document.createElement('i');
                     deleteIcon.className = 'fas fa-trash-alt delete-section';
                     deleteIcon.title = 'Eliminar sección';
@@ -868,6 +870,13 @@
         // Función para cargar tarjetas desde localStorage
         function loadCards() {
             sectionsData.forEach(section => {
+                const sectionElement = document.getElementById(section.id);
+                if (sectionElement) {
+                    // Limpiar tarjetas existentes en la sección
+                    const existingCards = sectionElement.querySelectorAll('.card');
+                    existingCards.forEach(card => card.remove());
+                }
+
                 const savedCards = cardsData[section.id] || [];
                 savedCards.forEach(savedCard => {
                     createCard(section.id, savedCard);
@@ -1436,16 +1445,11 @@
             if (confirm("¿Estás seguro de que deseas eliminar esta sección? Todas las tarjetas asociadas también serán eliminadas.")) {
                 // Eliminar la sección del DOM
                 const sectionDiv = document.getElementById(sectionId);
-                sectionDiv.remove();
+                if (sectionDiv) sectionDiv.remove();
 
                 // Eliminar la sección del menú
-                const menu = document.getElementById('menu');
-                const menuItems = menu.querySelectorAll('.menu-item');
-                menuItems.forEach(menuItem => {
-                    if (menuItem.getAttribute('data-section-id') === sectionId) {
-                        menuItem.remove();
-                    }
-                });
+                const menuItem = document.querySelector(`.menu-item[data-section-id="${sectionId}"]`);
+                if (menuItem) menuItem.remove();
 
                 // Eliminar la sección de sectionsData
                 sectionsData = sectionsData.filter(section => section.id !== sectionId);
@@ -1519,6 +1523,7 @@
 
             // Actualizar las secciones
             initializeSections();
+            loadCards(); // Cargar tarjetas si las hay
 
             // Cerrar el modal
             closeAddSectionModal();
@@ -1811,7 +1816,12 @@
             const settingsModal = document.getElementById('settingsModal');
             const enableDeletionCheckbox = document.getElementById('enableSectionDeletion');
             enableSectionDeletion = enableDeletionCheckbox.checked;
-            initializeSections(); // Actualizar las secciones
+            const dashboard = document.getElementById('dashboard');
+            if (enableSectionDeletion) {
+                dashboard.classList.add('enable-section-deletion');
+            } else {
+                dashboard.classList.remove('enable-section-deletion');
+            }
             settingsModal.style.display = 'none';
             settingsModal.setAttribute('aria-hidden', 'true');
         }
