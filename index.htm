@@ -10,7 +10,7 @@
     <!-- Importar la fuente Montserrat desde Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Estilos Generales */
+     /* Estilos Generales */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -107,7 +107,6 @@
             padding-right: 10px; /* Espacio para scrollbar si es necesario */
             scrollbar-width: none; /* Firefox */
             -ms-overflow-style: none; /* IE y Edge */
-            margin-bottom: 20px;
         }
         .menu::-webkit-scrollbar {
             display: none; /* Chrome, Safari y Opera */
@@ -619,11 +618,26 @@
         }
         #settingsModal .import-export-buttons {
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
+            gap: 10px;
             margin-top: 20px;
         }
         #settingsModal .import-export-buttons button {
-            width: 48%;
+            width: 100%;
+            padding: 10px;
+            background-color: #3a3a4f;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #settingsModal .import-export-buttons button:hover {
+            background-color: #4b4b65;
+        }
+        #settingsModal .import-export-buttons button i {
+            margin-right: 8px;
         }
     </style>
 </head>
