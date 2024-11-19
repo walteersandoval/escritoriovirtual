@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <!-- Metadatos -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Oficina Virtual Completa con Contenedores Editables</title>
-    <!-- Importar Font Awesome -->
+    <!-- Importar Font Awesome para los íconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Importar la Fuente Montserrat desde Google Fonts -->
+    <!-- Importar la fuente Montserrat desde Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* Estilos Generales */
@@ -415,6 +416,17 @@
         .maximize-modal:focus {
             color: #fff;
         }
+        .open-link {
+            color: #aaa;
+            font-size: 22px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .open-link:hover,
+        .open-link:focus {
+            color: #fff;
+        }
         .icon-selection {
             display: flex;
             flex-wrap: wrap;
@@ -503,11 +515,10 @@
             max-height: 100%;
         }
         /* Modal para Visualizar Documento */
-       #documentModal .modal-content {
-    background-color: #1e1e2f;
-    width: 100%;
-    /* max-width: 800px; */
-}
+        #documentModal .modal-content {
+            background-color: #1e1e2f;
+            width: 100%;
+        }
         #documentModal .modal-body {
             position: relative;
             padding-top: 56.25%; /* 16:9 Aspect Ratio */
@@ -613,6 +624,7 @@
             <div class="modal-header">
                 <h2>Reproduciendo Video</h2>
                 <div>
+                    <span class="open-link" onclick="openVideoLink()" title="Abrir en una nueva pestaña"><i class="fas fa-external-link-alt"></i></span>
                     <span class="maximize-modal" onclick="toggleFullscreen('videoModal')" title="Pantalla completa"><i class="fas fa-expand"></i></span>
                     <span class="close-modal" onclick="closeVideoModal()" aria-label="Cerrar modal">&times;</span>
                 </div>
@@ -634,6 +646,7 @@
             <div class="modal-header">
                 <h2>Visualizando Imagen</h2>
                 <div>
+                    <span class="open-link" onclick="openImageLink()" title="Abrir en una nueva pestaña"><i class="fas fa-external-link-alt"></i></span>
                     <span class="maximize-modal" onclick="toggleFullscreen('imageModal')" title="Pantalla completa"><i class="fas fa-expand"></i></span>
                     <span class="close-modal" onclick="closeImageModal()" aria-label="Cerrar modal">&times;</span>
                 </div>
@@ -650,6 +663,7 @@
             <div class="modal-header">
                 <h2>Visualizando Documento</h2>
                 <div>
+                    <span class="open-link" onclick="openDocumentLink()" title="Abrir en una nueva pestaña"><i class="fas fa-external-link-alt"></i></span>
                     <span class="maximize-modal" onclick="toggleFullscreen('documentModal')" title="Pantalla completa"><i class="fas fa-expand"></i></span>
                     <span class="close-modal" onclick="closeDocumentModal()" aria-label="Cerrar modal">&times;</span>
                 </div>
@@ -741,7 +755,7 @@
         // Cargar tarjetas guardadas al inicio
         document.addEventListener('DOMContentLoaded', () => {
             loadCards();
-            // Agregar evento delegación para enlaces de video e imagen
+            // Agregar evento delegación para enlaces de video, imagen y documento
             document.body.addEventListener('click', handleLinkClick);
         });
 
@@ -977,11 +991,11 @@
                 document.removeEventListener('mouseup', stopDragging);
 
                 cancelAnimationFrame(animationFrameId);
-                
+
                 // Actualizar posición en cardsData
                 const cardId = card.getAttribute('data-card-id');
                 updateCardPosition(section.id, cardId, currentX + 'px', currentY + 'px');
-                
+
                 saveCards();
             }
 
@@ -997,11 +1011,11 @@
                 document.removeEventListener('touchend', stopDraggingTouch);
 
                 cancelAnimationFrame(animationFrameId);
-                
+
                 // Actualizar posición en cardsData
                 const cardId = card.getAttribute('data-card-id');
                 updateCardPosition(section.id, cardId, currentX + 'px', currentY + 'px');
-                
+
                 saveCards();
             }
 
@@ -1453,6 +1467,7 @@
             const videoModal = document.getElementById('videoModal');
             const videoPlayer = document.getElementById('videoPlayer');
             let iframe = document.getElementById('youtubeIframe');
+            let contentUrl = ''; // Nueva variable para almacenar el enlace
 
             if (type === 'direct') {
                 // Configurar video para enlaces directos
@@ -1460,6 +1475,8 @@
                 videoPlayer.src = identifier;
                 videoPlayer.type = getVideoMimeType(identifier);
                 videoPlayer.load();
+
+                contentUrl = identifier;
 
                 // Ocultar iframe si existe
                 if (iframe) {
@@ -1482,10 +1499,15 @@
                 }
                 iframe.src = `https://www.youtube.com/embed/${identifier}?autoplay=1`;
                 iframe.style.display = 'block';
+
+                contentUrl = `https://www.youtube.com/watch?v=${identifier}`;
             }
 
             videoModal.style.display = 'block';
             videoModal.setAttribute('aria-hidden', 'false');
+
+            // Almacenar el enlace en un atributo data
+            videoModal.setAttribute('data-content-url', contentUrl);
         }
 
         // Función para cerrar el modal de video
@@ -1532,6 +1554,9 @@
             modalImage.src = imageUrl;
             imageModal.style.display = 'block';
             imageModal.setAttribute('aria-hidden', 'false');
+
+            // Almacenar el enlace en un atributo data
+            imageModal.setAttribute('data-content-url', imageUrl);
         }
 
         // Función para cerrar el modal de imagen
@@ -1549,14 +1574,16 @@
             const documentModal = document.getElementById('documentModal');
             const documentIframe = document.getElementById('documentIframe');
 
+            let contentUrl = documentUrl; // Almacenar el enlace original
+
             if (isGoogleDrive) {
                 // Modificar la URL para que sea embebible
-                documentUrl = convertToEmbedUrl(documentUrl);
-                if (!documentUrl) {
+                const embedUrl = convertToEmbedUrl(documentUrl);
+                if (!embedUrl) {
                     alert("No se puede visualizar este documento en el visor.");
                     return;
                 }
-                documentIframe.src = documentUrl;
+                documentIframe.src = embedUrl;
             } else {
                 const encodedUrl = encodeURIComponent(documentUrl);
                 documentIframe.src = `https://docs.google.com/gview?url=${encodedUrl}&embedded=true`;
@@ -1564,6 +1591,9 @@
 
             documentModal.style.display = 'block';
             documentModal.setAttribute('aria-hidden', 'false');
+
+            // Almacenar el enlace en un atributo data
+            documentModal.setAttribute('data-content-url', contentUrl);
         }
 
         // Función para cerrar el modal de documento
@@ -1623,6 +1653,37 @@
             } else {
                 maximizeIcon.classList.remove('fa-compress');
                 maximizeIcon.classList.add('fa-expand');
+            }
+        }
+
+        // Funciones para abrir el enlace en una nueva pestaña
+        function openVideoLink() {
+            const videoModal = document.getElementById('videoModal');
+            const contentUrl = videoModal.getAttribute('data-content-url');
+            if (contentUrl) {
+                window.open(contentUrl, '_blank');
+            } else {
+                alert('No se pudo obtener el enlace del video.');
+            }
+        }
+
+        function openImageLink() {
+            const imageModal = document.getElementById('imageModal');
+            const contentUrl = imageModal.getAttribute('data-content-url');
+            if (contentUrl) {
+                window.open(contentUrl, '_blank');
+            } else {
+                alert('No se pudo obtener el enlace de la imagen.');
+            }
+        }
+
+        function openDocumentLink() {
+            const documentModal = document.getElementById('documentModal');
+            const contentUrl = documentModal.getAttribute('data-content-url');
+            if (contentUrl) {
+                window.open(contentUrl, '_blank');
+            } else {
+                alert('No se pudo obtener el enlace del documento.');
             }
         }
     </script>
